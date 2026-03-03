@@ -5,26 +5,67 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "scheme": "moobilpay",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0f0f23"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "userInterfaceStyle": "dark"
     },
     "android": {
+      "statusBar": {
+        "barStyle": "light-content",
+        "backgroundColor": "#00000000",
+        "translucent": true
+      },
+      "navigationBar": {
+        "backgroundColor": "#00000000"
+      },
+      "edgeToEdge": true,
+      "userInterfaceStyle": "dark",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.moobilPay.app",
+      "signingConfig": {
+        "storeFile": "./debug.keystore",
+        "storePassword": "android",
+        "keyAlias": "androiddebugkey",
+        "keyPassword": "android"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "35ef1254-17eb-4149-ac0c-5f0a099f08a8"
+      }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker",
+      "@react-native-google-signin/google-signin",
+      "expo-font",
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-navigation-bar",
+        {
+          "position": "absolute",
+          "visibility": "visible",
+          "behavior": "overlay-swipe",
+          "style": "light"
+        }
+      ]
+    ]
   }
 }
