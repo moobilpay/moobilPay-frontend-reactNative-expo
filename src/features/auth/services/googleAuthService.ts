@@ -2,6 +2,7 @@ import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "../../../services/firebase";
 import { userFirestore } from "./userFirestore";
 import { Users } from "../../../types";
+import { Config } from "../../../api/config";
 
 export interface GoogleSignInResult {
     success: boolean;
@@ -25,6 +26,13 @@ export async function handleGoogleSignIn(): Promise<GoogleSignInResult> {
         const { GoogleSignin: GS, statusCodes: SC } = await import("@react-native-google-signin/google-signin");
         const GoogleSignin = GS;
         statusCodes = SC;
+
+        // Configurer GoogleSignin avec les IDs clients
+        GoogleSignin.configure({
+            webClientId: Config.googleAuth.webClientId,  
+            iosClientId: Config.googleAuth.iosClientId,
+      offlineAccess: true,
+        });
 
         console.log("🔵 [GoogleAuth] Vérification Google Play Services");
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });

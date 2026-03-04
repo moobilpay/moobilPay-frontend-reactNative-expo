@@ -1,0 +1,135 @@
+import { StyleSheet } from 'react-native';
+
+// Shared styles reused across all payment step components
+export const sharedStyles = StyleSheet.create({
+    stepContent: {
+        padding: 20,
+        paddingBottom: 40,
+    },
+    gradientBtn: {
+        height: 56,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+    },
+    btnText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    btnsRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 20,
+    },
+    backBtn: {
+        flex: 1,
+        height: 56,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    backBtnText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#64748b',
+    },
+    nextBtn: {
+        flex: 2,
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    btnDisabled: {
+        opacity: 0.4,
+    },
+    inputGroup: {
+        gap: 8,
+        marginBottom: 16,
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#475569',
+    },
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f8fafc',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        height: 50,
+    },
+    input: {
+        flex: 1,
+        marginLeft: 10,
+        fontSize: 15,
+        color: '#1e293b',
+    },
+    hintBox: {
+        flexDirection: 'row',
+        backgroundColor: '#eff6ff',
+        padding: 12,
+        borderRadius: 12,
+        gap: 10,
+        marginBottom: 16,
+    },
+    hintText: {
+        flex: 1,
+        fontSize: 12,
+        color: '#3b82f6',
+        lineHeight: 18,
+    },
+    summaryCard: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
+        marginBottom: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
+        elevation: 1,
+    },
+    summaryHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    summaryBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f1f5f9',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        gap: 4,
+    },
+    summaryBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#64748b',
+    },
+    summaryPrice: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#dc2626',
+    },
+    summaryPlanName: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1e293b',
+    },
+    summarySubtitle: {
+        fontSize: 12,
+        color: '#94a3b8',
+        marginTop: 2,
+    },
+});

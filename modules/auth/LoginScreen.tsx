@@ -8,22 +8,33 @@ import {
   Dimensions,
   Platform,
   Alert,
+  TextInput,
+  KeyboardAvoidingView,
+  ScrollView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { handleGoogleSignIn } from "../../src/features/auth/services/googleAuthService";
+import { handleEmailAuth } from "../../src/features/auth/services/emailAuthService";
 import { AppLoader } from "../../src/components/AppLoader";
+import { useRouter } from "expo-router";
 
 const { width, height } = Dimensions.get("window");
 
 const LoginScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const heroBounce = useRef(new Animated.Value(-20)).current;
   const heroOpacity = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(80)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
+
+  // États pour l'authentification e-mail
+  const [isEmailMode, setIsEmailMode] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     Animated.stagger(120, [
@@ -39,163 +50,214 @@ const LoginScreen: React.FC = () => {
   }, []);
 
   const [authLoading, setAuthLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Veuillez patienter...");
 
   const handleGoogle = async () => {
+    setLoadingMessage("Connexion Google...");
     setAuthLoading(true);
     const result = await handleGoogleSignIn();
     setAuthLoading(false);
 
-    if (!result.success && result.error && result.error !== "Connexion annulée") {
+    if (result.success) {
+      router.push('/(tabs)');
+    } else if (result.error && result.error !== "Connexion annulée") {
       Alert.alert("Erreur de connexion", result.error);
     }
   };
 
-  const AuthButton = ({
-    icon,
-    label,
-    onPress,
-    googleStyle = false,
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    onPress: () => void;
-    googleStyle?: boolean;
-  }) => (
-    <TouchableOpacity style={styles.authBtn} onPress={onPress} activeOpacity={0.72}>
-      <View style={styles.authBtnIcon}>{icon}</View>
-      <Text style={styles.authBtnLabel}>{label}</Text>
-    </TouchableOpacity>
-  );
+  const handleEmailSubmit = async () => {
+    if (!email || !password) {
+      Alert.alert("Champs requis", "Veuillez remplir l'e-mail et le mot de passe.");
+      return;
+    }
+
+    setLoadingMessage("Authentification...");
+    setAuthLoading(true);
+    const result = await handleEmailAuth(email, password);
+    setAuthLoading(false);
+
+    if (result.success) {
+      router.push('/(tabs)');
+    } else if (result.error) {
+      Alert.alert("Erreur d'authentification", result.error);
+    }
+  };
 
   return (
-    <View style={styles.root}>
-      <AppLoader visible={authLoading} message="Connexion Google..." />
+    <KeyboardAvoidingView 
+      style={styles.root} 
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+    >
+      <AppLoader visible={authLoading} message={loadingMessage} />
       
-      {/* ─── FOND ─── */}
       <LinearGradient
         colors={["#0a0a12", "#0f0f1a"]}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Accent géométrique — arc rouge qui saigne hors du coin */}
+      {/* Accent géométrique */}
       <View style={[styles.arcContainer, { top: -height * 0.12 + insets.top }]}>
         <View style={styles.arc} />
       </View>
 
-      {/* Grain texture overlay — lignes diagonales épurées */}
-      {Array.from({ length: 12 }).map((_, i) => (
-        <View
-          key={i}
+      {/* Rendu dynamique : Si e-mail mode, on cache le hero pour plus de place */}
+      {!isEmailMode && (
+        <Animated.View
           style={[
-            styles.diagonalLine,
-            { top: i * 62, opacity: 0.025 },
+            styles.hero,
+            {
+              paddingTop: insets.top + 32,
+              opacity: heroOpacity,
+              transform: [{ translateY: heroBounce }],
+            },
           ]}
-        />
-      ))}
-
-      {/* ─── ZONE HERO ─── */}
-      <Animated.View
-        style={[
-          styles.hero,
-          {
-            paddingTop: insets.top + 32,
-            opacity: heroOpacity,
-            transform: [{ translateY: heroBounce }],
-          },
-        ]}
-      >
-        {/* Logo mark — ancré haut gauche */}
-        <View style={styles.logoPill}>
-          <LinearGradient
-            colors={["#c41a1a", "#7c0d0d"]}
-            style={styles.logoPillGrad}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Ionicons name="phone-portrait-outline" size={16} color="#fff" />
-          </LinearGradient>
-          <Text style={styles.logoPillName}>MoobilPay</Text>
-        </View>
-
-        {/* Titre héro — typographie dominante */}
-        <View style={styles.heroTitle}>
-          <Text style={styles.heroLine1}>Payez votre</Text>
-          <View style={styles.heroAccentRow}>
-            <Text style={styles.heroLine2}>Netflix</Text>
-            <View style={styles.heroRedUnderline} />
+        >
+          <View style={styles.logoPill}>
+            <LinearGradient
+              colors={["#c41a1a", "#7c0d0d"]}
+              style={styles.logoPillGrad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="phone-portrait-outline" size={16} color="#fff" />
+            </LinearGradient>
+            <Text style={styles.logoPillName}>MoobilPay</Text>
           </View>
-          <Text style={styles.heroLine3}>depuis l'Afrique.</Text>
-        </View>
 
-        {/* Badges paiement — ancrés bas de la zone héro */}
-        <View style={styles.partnerBadges}>
-          <View style={styles.badge}>
-            <View style={[styles.badgeDot, { backgroundColor: "#ffcc00" }]} />
-            <Text style={styles.badgeLabel}>MTN Money</Text>
+          <View style={styles.heroTitle}>
+            <Text style={styles.heroLine1}>Payez votre</Text>
+            <View style={styles.heroAccentRow}>
+              <Text style={styles.heroLine2}>Netflix</Text>
+              <View style={styles.heroRedUnderline} />
+            </View>
+            <Text style={styles.heroLine3}>depuis l'Afrique.</Text>
           </View>
-          <View style={styles.badgeSep} />
-          <View style={styles.badge}>
-            <View style={[styles.badgeDot, { backgroundColor: "#ff6600" }]} />
-            <Text style={styles.badgeLabel}>Orange Money</Text>
+
+          <View style={styles.partnerBadges}>
+            <View style={styles.badge}>
+              <View style={[styles.badgeDot, { backgroundColor: "#ffcc00" }]} />
+              <Text style={styles.badgeLabel}>MTN Money</Text>
+            </View>
+            <View style={styles.badgeSep} />
+            <View style={styles.badge}>
+              <View style={[styles.badgeDot, { backgroundColor: "#ff6600" }]} />
+              <Text style={styles.badgeLabel}>Orange Money</Text>
+            </View>
           </View>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      )}
 
       {/* ─── CARTE AUTH ─── */}
       <Animated.View
         style={[
           styles.authCard,
+          isEmailMode && styles.authCardExpanded,
           {
-            paddingBottom: insets.bottom + 24,
+            paddingBottom: insets.bottom + (isEmailMode ? 40 : 24),
             opacity: cardOpacity,
             transform: [{ translateY: cardSlide }],
           },
         ]}
       >
-        {/* Handle visuel */}
         <View style={styles.handle} />
 
-        <Text style={styles.authCardTitle}>Se connecter</Text>
-        <Text style={styles.authCardSub}>Choisissez une méthode</Text>
-
-        {/* ── GRILLE 2×2 — méthodes sociales ── */}
-        <View style={styles.socialGrid}>
-          <TouchableOpacity 
-            style={styles.socialCell} 
-            activeOpacity={0.72}
-            onPress={handleGoogle}
-            disabled={authLoading}
-          >
-            <View style={styles.socialIcon}>
-              <Text style={styles.googleG}>G</Text>
+        {/* ── MODE E-MAIL ── */}
+        {isEmailMode ? (
+          <View style={styles.emailForm}>
+            <View style={styles.formHeader}>
+              <TouchableOpacity 
+                style={styles.backBtn} 
+                onPress={() => setIsEmailMode(false)}
+              >
+                <Ionicons name="arrow-back" size={20} color="#fff" />
+              </TouchableOpacity>
+              <Text style={styles.authCardTitle}>Accès E-mail</Text>
             </View>
-            <Text style={styles.socialLabel}>Google</Text>
-          </TouchableOpacity>
+            <Text style={styles.authCardSub}>Connectez-vous ou créez un compte</Text>
 
-          <TouchableOpacity style={styles.socialCell} activeOpacity={0.72}>
-            <View style={styles.socialIcon}>
-              <Ionicons name="logo-apple" size={22} color="#fff" />
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color="rgba(255,255,255,0.4)" style={styles.inputIcon} />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Adresse e-mail"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
+              />
             </View>
-            <Text style={styles.socialLabel}>Apple</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* ── BOUTONS EMAIL + SMS ── */}
-        <View style={styles.altMethods}>
-          <TouchableOpacity style={styles.altBtn} activeOpacity={0.75}>
-            <Ionicons name="mail-outline" size={17} color="rgba(255,255,255,0.55)" />
-            <Text style={styles.altBtnText}>Continuer avec Email</Text>
-            <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.2)" />
-          </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="rgba(255,255,255,0.4)" style={styles.inputIcon} />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Mot de passe"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
+            </View>
 
-          <View style={styles.altDivider} />
+            <TouchableOpacity 
+              style={styles.submitBtn} 
+              activeOpacity={0.8}
+              onPress={handleEmailSubmit}
+            >
+              <Text style={styles.submitBtnText}>Continuer</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          /* ── MODE CHOIX MÉTHODE ── */
+          <>
+            <Text style={styles.authCardTitle}>Se connecter</Text>
+            <Text style={styles.authCardSub}>Choisissez une méthode</Text>
 
-          <TouchableOpacity style={styles.altBtn} activeOpacity={0.75}>
-            <Ionicons name="chatbubble-outline" size={17} color="rgba(255,255,255,0.55)" />
-            <Text style={styles.altBtnText}>Continuer avec SMS</Text>
-            <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.2)" />
-          </TouchableOpacity>
-        </View>
+            <View style={styles.socialGrid}>
+              <TouchableOpacity 
+                style={styles.socialCell} 
+                activeOpacity={0.72}
+                onPress={handleGoogle}
+                disabled={authLoading}
+              >
+                <View style={styles.socialIcon}>
+                  <Text style={styles.googleG}>G</Text>
+                </View>
+                <Text style={styles.socialLabel}>Google</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.socialCell} activeOpacity={0.72}>
+                <View style={styles.socialIcon}>
+                  <Ionicons name="logo-apple" size={22} color="#fff" />
+                </View>
+                <Text style={styles.socialLabel}>Apple</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.altMethods}>
+              <TouchableOpacity 
+                style={styles.altBtn} 
+                activeOpacity={0.75}
+                onPress={() => setIsEmailMode(true)}
+              >
+                <Ionicons name="mail-outline" size={17} color="rgba(255,255,255,0.55)" />
+                <Text style={styles.altBtnText}>Continuer avec Email</Text>
+                <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.2)" />
+              </TouchableOpacity>
+
+              <View style={styles.altDivider} />
+
+              <TouchableOpacity style={styles.altBtn} activeOpacity={0.75}>
+                <Ionicons name="chatbubble-outline" size={17} color="rgba(255,255,255,0.55)" />
+                <Text style={styles.altBtnText}>Continuer avec SMS</Text>
+                <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.2)" />
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         {/* Légal */}
         <Text style={styles.legal}>
@@ -205,7 +267,7 @@ const LoginScreen: React.FC = () => {
           <Text style={styles.legalLink}>Politique de confidentialité</Text>
         </Text>
       </Animated.View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -442,6 +504,67 @@ const styles = StyleSheet.create({
   authBtn: {},
   authBtnIcon: {},
   authBtnLabel: {},
+
+  // Styles E-mail Mode
+  authCardExpanded: {
+    paddingTop: 24,
+  },
+  emailForm: {
+    width: "100%",
+  },
+  formHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 12,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    marginTop: 14,
+    paddingHorizontal: 16,
+    height: 56,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  textInput: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 15,
+  },
+  submitBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#c41a1a",
+    borderRadius: 14,
+    height: 56,
+    marginTop: 24,
+    gap: 10,
+    shadowColor: "#c41a1a",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  submitBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
 });
 
 export default LoginScreen;

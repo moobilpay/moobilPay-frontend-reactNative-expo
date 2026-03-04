@@ -10,6 +10,7 @@ interface AuthContextType {
   userData: Users | null;
   loading: boolean;
   setUserData: (data: Users | null) => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,41 +26,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("🔵 [AuthContext] onAuthStateChanged déclenché");
       setUser(firebaseUser);
+      
       if (firebaseUser) {
         console.log("🔵 [AuthContext] Firebase User détecté:", firebaseUser.uid);
-        setLoading(true);
+        
+        // 1. Tenter de charger le cache IMMÉDIATEMENT pour la rapidité
+        const stored = await storage.get("user_data");
+        if (stored) {
+          console.log("✅ [AuthContext] User data chargé depuis le CACHE");
+          setUserData(stored);
+          setLoading(false); // On peut déjà arrêter le loading si on a du cache
+        }
+
         try {
-          console.log("🔵 [AuthContext] Tentative de récupération depuis API...");
+          // 2. Vérifier/Mettre à jour via l'API en arrière-plan
+          console.log("🔵 [AuthContext] Vérification via API...");
           const apiData = await userFirestore.getUser(firebaseUser);
           if (apiData) {
-            console.log("✅ [AuthContext] User data récupéré depuis API");
+            console.log("✅ [AuthContext] User data synchronisé depuis API");
             setUserData(apiData);
             await storage.set("user_data", apiData);
-          } else {
-            console.log("⚠️ [AuthContext] API n'a pas retourné de données, fallback vers storage");
-            const stored = await storage.get("user_data");
-            if (stored) {
-              console.log("✅ [AuthContext] User data récupéré depuis storage");
-              setUserData(stored);
-            } else {
-              console.log("❌ [AuthContext] Aucune donnée trouvée");
-            }
           }
         } catch (error) {
-          console.error("❌ [AuthContext] Erreur lors du chargement:", error);
-          const stored = await storage.get("user_data");
-          if (stored) {
-            console.log("✅ [AuthContext] Fallback vers storage après erreur");
-            setUserData(stored);
-          }
+          console.error("❌ [AuthContext] Erreur API (on garde le cache si présent):", error);
+        } finally {
+          setLoading(false);
         }
       } else {
-        console.log("🔵 [AuthContext] Pas de Firebase User, nettoyage userData");
+        console.log("🔵 [AuthContext] Pas d'utilisateur");
         setUserData(null);
         await storage.remove("user_data");
+        setLoading(false);
       }
-      setLoading(false);
-      console.log("🔵 [AuthContext] Loading terminé");
     });
 
     return unsubscribe;
@@ -74,9 +72,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const logout = async () => {
+    try {
+      await auth.signOut();
+      await storage.remove("user_data");
+      setUser(null);
+      setUserData(null);
+    } catch (error) {
+      console.error("❌ [AuthContext] Erreur lors de la déconnexion:", error);
+    }
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, userData, loading, setUserData: handleUpdateUserData }}
+      value={{ 
+        user, 
+        userData, 
+        loading, 
+        setUserData: handleUpdateUserData,
+        logout 
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -1,0 +1,820 @@
+/**
+ * pay.tsx — Reabonnement Screen (Orchestrateur)
+ *
+ * Flux EXACT du frontend Angular (payement.component.ts + PaymentModalService) :
+ * ───────────────────────────────────────────────────────────────────────────────
+ * Page 1   → Choix du plan
+ * Page 1.5 → Identité Netflix (Prénom/Nom → API credentials)  → page 2 step 1
+ * Page 2 step 1 → Choix de méthode
+ * Page 2 step 2 → Formulaire de détails
+ *   • Mobile Money (OM/MTN)  :
+ *       a. Clic "Payer" → paymentModal.startInitializing() → BOTTOM SHEET S'OUVRE (isInitializing=true)
+ *       b. POST init-mobile-money → réponse : { paymentLink, transactionId, planActivationId }
+ *       c. paymentModal.openModal(link, txId) → isInitializing=false + DISPLAY_TIME 6s loader
+ *       d. WebView charge la passerelle Yuunna
+ *       e. Socket "payment_validated" → bottom sheet fermé → page 5
+ *       f. Fermeture manuelle (bouton Fermer / backdrop) → isCancelling=true → POST cancel → fermeture
+ *   • Carte bancaire : formulaire dans l'app → page 5
+ *   • PayPal : redirect → page 5
+ * Page 5 → Spinner activation (attente socket "activationcreated")
+ * Page 6 → Reçu de succès
+ */
+
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+  AppState,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { io, Socket } from 'socket.io-client';
+import axios from 'axios';
+
+import { PageHeader } from '../src/components/PageHeader';
+import { AppLoader } from '../src/components/AppLoader';
+import { useAuth } from '../src/features/auth/context/AuthContext';
+import { Config } from '../src/api/config';
+import { NetflixPlan, PaymentMethod } from '../src/features/payment/types';
+
+// Composants d'étapes
+import StepPlanSelection from '../src/features/payment/components/StepPlanSelection';
+import StepNetflixInfo from '../src/features/payment/components/StepNetflixInfo';
+import StepPaymentMethod from '../src/features/payment/components/StepPaymentMethod';
+import StepPaymentDetails from '../src/features/payment/components/StepPaymentDetails';
+import StepProcessing from '../src/features/payment/components/StepProcessing';
+import StepReceipt from '../src/features/payment/components/StepReceipt';
+
+// Bottom Sheet de paiement (réplique du ion-modal 80%)
+import PaymentBottomSheet from '../src/features/payment/components/PaymentBottomSheet';
+
+// ─── Constantes ──────────────────────────────────────────────────────────────
+const STEP_LABELS = ['Plan', 'Netflix', 'Méthode', 'Détails', 'Confir.', 'Reçu'];
+const DISPLAY_TIME = 6000; // Durée d'affichage de l'overlay initialisation (même que frontend)
+
+function getStepNumber(page: number, activeStep: number): number {
+  if (page === 1) return 1;
+  if (page === 1.5) return 2;
+  if (page === 2 && activeStep === 1) return 3;
+  if (page === 2 && activeStep === 2) return 4;
+  if (page === 5) return 5;
+  if (page === 6) return 6;
+  return 1;
+}
+
+// ─── Composant principal ─────────────────────────────────────────────────────
+export default function ReabonnementScreen() {
+  const router = useRouter();
+  const { user, userData } = useAuth();
+  const socketRef = useRef<Socket | null>(null);
+
+  // ── Navigation ──
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [activeStep, setActiveStep] = useState(1);
+
+  // ── Plans ──
+  const [plans, setPlans] = useState<NetflixPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [selectedPlanId, setSelectedPlanId] = useState('premium');
+
+  // ── Identité Netflix ──
+  const [userFirstName, setUserFirstName] = useState('');
+  const [userLastName, setUserLastName] = useState('');
+  const [netflixEmail, setNetflixEmail] = useState('');
+  const [netflixPassword, setNetflixPassword] = useState('');
+
+  // ── Méthode de paiement ──
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
+
+  // ── Formulaire détails ──
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [cvv, setCvv] = useState('');
+
+  // ── Résultats paiement ──
+  const [transactionId, setTransactionId] = useState('');
+  const [planActivationId, setPlanActivationId] = useState('');
+
+  // ── Activation ──
+  const [verificationStep, setVerificationStep] = useState(0);
+
+  // Refs pour les listeners socket (évite de dépendre des états dans le useEffect)
+  const currentPageRef = useRef(currentPage);
+  useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
+
+  // ── État du bottom sheet (calqué sur PaymentModalService) ──
+  const [showPaymentModal, setShowPaymentModal] = useState(false);  // isOpen
+  const [paymentUrl, setPaymentUrl] = useState('');                  // paymentUrl
+  const [isInitializing, setIsInitializing] = useState(false);       // isInitializing
+  const [isCancelling, setIsCancelling] = useState(false);           // isCancelling
+  const [frameLoaded, setFrameLoaded] = useState(false);            // paymentFrameLoaded
+  const [isInstantClose, setIsInstantClose] = useState(false);      // instantClose
+
+  // ── UI général ──
+  const [isLoading, setIsLoading] = useState(false);
+
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+  const stepNumber = getStepNumber(currentPage, activeStep);
+  const stepperProgress = (stepNumber / 6) * 100;
+
+  // ─── Initialisation ──────────────────────────────────────────────────────
+  useEffect(() => {
+    fetchPlans();
+    if (userData) {
+      setUserFirstName((prev) => prev || userData.infos?.prenom || user?.displayName?.split(' ')[0] || '');
+      setUserLastName((prev) => prev || userData.infos?.nom || user?.displayName?.split(' ')[1] || '');
+    }
+  }, [userData, user]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      console.log('🔌 [INIT] Initialisation du socket pour UID:', user.uid);
+      initSocket();
+    }
+    
+    // Gérer le retour au premier plan (Foreground)
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        console.log('✨ [APP-STATE] Application de retour au premier plan');
+        
+        // Reconnecter le socket si besoin
+        if (socketRef.current && !socketRef.current.connected) {
+          console.log('📡 [SOCKET] Tentative de RECONNEXION forcée...');
+          socketRef.current.connect();
+        }
+      }
+    });
+
+    return () => {
+      console.log('🔌 [pay] Nettoyage final Socket');
+      subscription.remove();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [user?.uid]); // ON NE DÉPEND PLUS de currentPage ou transactionId
+
+
+  // ─── Plans ───────────────────────────────────────────────────────────────
+  const fetchPlans = async () => {
+    try {
+      const res = await axios.get(`${Config.apiUrl}/api/netflix/plans`, {
+        headers: { 'ngrok-skip-browser-warning': 'true' },
+      });
+      if (res.data.success && res.data.data?.length > 0) {
+        setPlans(res.data.data);
+        const premium = res.data.data.find((p: NetflixPlan) => p.id === 'premium');
+        setSelectedPlanId(premium?.id || res.data.data[0].id);
+      }
+    } catch (err) {
+      console.error('[pay] fetchPlans:', err);
+    } finally {
+      setPlansLoading(false);
+    }
+  };
+
+  // ─── Reset complet de l'état (Action Home) ────────────────────────────────
+  const handleHome = () => {
+    // 1. Reset navigation
+    setCurrentPage(1);
+    setActiveStep(1);
+    
+    // 2. Reset données Netflix
+    setNetflixEmail('');
+    setNetflixPassword('');
+    
+    // 3. Reset sélection méthode et formulaires
+    setSelectedMethod(null);
+    setPhoneNumber('');
+    setCardNumber('');
+    setCardName('');
+    setExpiryDate('');
+    setCvv('');
+    
+    // 4. Reset transactions
+    setTransactionId('');
+    setPlanActivationId('');
+    setVerificationStep(0);
+    
+    // 5. Reset UI
+    setIsLoading(false);
+    resetModal();
+
+    // 6. Navigation
+    router.replace('/(tabs)/');
+  };
+
+  // ─── Socket ───────────────────────────────────────────────────────────────
+  const initSocket = () => {
+    if (socketRef.current) {
+      console.log('📡 [SOCKET] Déconnexion de l\'instance précédente...');
+      socketRef.current.disconnect();
+    }
+
+    console.log('📡 [SOCKET] Tentative de connexion sur:', Config.apiUrl);
+    const socket = io(Config.apiUrl, {
+      transports: ['websocket'],
+      forceNew: true
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log(`✅ [SOCKET] Connecté ! ID: ${socket.id}`);
+      if (user?.uid) {
+        console.log(`🔗 [SOCKET] Emission 'join_user' pour UID: ${user.uid} (Room attendue sur serveur)`);
+        socket.emit('join_user', user.uid);
+      } else {
+        console.warn('⚠️ [SOCKET] Pas d\'UID disponible pour join_user (User non connecté)');
+      }
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('❌ [SOCKET] Erreur de connexion:', err.message);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.warn(`⚠️ [SOCKET] Déconnecté. Raison: ${reason}`);
+    });
+
+    socket.off('payment_validated');
+    socket.off('activationcreated');
+
+    socket.on('payment_validated', (data: any) => {
+      console.log('💰 [SOCKET-EVENT] payment_validated REÇU ! Data:', JSON.stringify(data, null, 2));
+      
+      const incomingId = data.data?.userId ? String(data.data.userId).trim() : null;
+      const currentUid = user?.uid ? String(user.uid).trim() : null;
+      const currentDbId = userData?.id ? String(userData.id).trim() : null;
+
+      console.log(`🔍 [SOCKET-MATCH] Comparaison IDs: Reçu(${incomingId}) vs UID(${currentUid}) | DBID(${currentDbId})`);
+
+      if (data.success && (incomingId === currentUid || (currentDbId && incomingId === currentDbId))) {
+        if (currentPageRef.current < 5) {
+          console.log('🎯 [SOCKET-MATCH] SUCCÈS PAIEMENT ! Transition vers Page 5 (Vérification Step 2)');
+          closeModalOnSuccess();
+          setVerificationStep(2);
+          setCurrentPage(5);
+        } else {
+          console.log('ℹ️ [SOCKET-MATCH] Paiement déjà traité, ignoré.');
+        }
+      } else {
+        console.warn('❌ [SOCKET-MATCH] ID non correspondant ou échec du succès.');
+      }
+    });
+
+    socket.on('activationcreated', (data: any) => {
+      console.log('🚀 [SOCKET-EVENT] activationcreated REÇU ! Data:', JSON.stringify(data, null, 2));
+      if (data.success && currentPageRef.current < 6) {
+        console.log('✅ [SOCKET-MATCH] ACTIVATION TERMINÉE ! Préparation transition Page 6.');
+        closeModalOnSuccess();
+        setVerificationStep(4);
+        setTimeout(() => {
+          console.log('📜 [TRANSITION] Navigation finale vers le reçu (Page 6)');
+          setCurrentPage(6);
+        }, 3500); // Passage plus lent (3.5s) comme demandé
+      } else {
+        console.log('ℹ️ [SOCKET-MATCH] Activation ignorée (Déjà sur page 6 ou success=false)');
+      }
+    });
+  };
+
+  // ─── PaymentModalService — startInitializing() ────────────────────────────
+  // Appelé avant l'API → ouvre le bottom sheet en état "initializing"
+  const startInitializing = () => {
+    resetModal();
+    setIsInitializing(true);
+    setShowPaymentModal(true);
+  };
+
+  // ─── PaymentModalService — openModal(link, txId) ──────────────────────────
+  // Appelé après réception de l'URL → affiche le loader 6s puis la webview
+  const openModal = (link: string, txId: string) => {
+    setFrameLoaded(false);
+    setTransactionId(txId);
+    setPaymentUrl(link);
+    setShowPaymentModal(true);
+
+    // Overlay de chargement visible pendant DISPLAY_TIME (même que frontend)
+    setTimeout(() => {
+      setIsInitializing(false);
+    }, DISPLAY_TIME);
+  };
+
+  // ─── PaymentModalService — closeModal() ───────────────────────────────────
+  // Appelé par le bouton Fermer ou le backdrop
+  const closePaymentModal = () => {
+    if (verificationStep === 2) {
+      // Paiement déjà validé → simple fermeture
+      setShowPaymentModal(false);
+      return;
+    }
+    // Sinon → annulation avec requête backend
+    cancelPayment();
+  };
+
+  // ─── PaymentModalService — cancelPayment() ───────────────────────────────
+  const cancelPayment = async () => {
+    setIsCancelling(true);
+    const startTime = Date.now();
+    const MIN_DISPLAY = 2000; // 2s minimum d'affichage "Annulation..."
+
+    const doFinalize = () => {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, MIN_DISPLAY - elapsed);
+      setTimeout(finalizeCancellation, remaining);
+    };
+
+    if (transactionId) {
+      try {
+        const idToken = await user?.getIdToken();
+        await axios.post(
+          `${Config.apiUrl}/api/subscription/cancel`,
+          { transactionId },
+          {
+            headers: {
+              'ngrok-skip-browser-warning': 'true',
+              Authorization: `Bearer ${idToken}`,
+            },
+          }
+        );
+        console.log('[pay] Annulation confirmée');
+      } catch (err) {
+        console.error('[pay] Erreur annulation (ignorée):', err);
+      }
+    }
+    doFinalize();
+  };
+
+  // ─── Finaliser la fermeture (reset complet) ───────────────────────────────
+  const finalizeCancellation = () => {
+    setIsCancelling(false);
+    setShowPaymentModal(false);
+    setPaymentUrl('');
+    setFrameLoaded(false);
+    setTransactionId('');
+    setVerificationStep(0);
+  };
+
+  // ─── Fermeture après SUCCÈS (conserve les données de transaction) ──────────
+  const closeModalOnSuccess = () => {
+    console.log('🏁 [MODAL-ACTION] Exécution de closeModalOnSuccess (Fermeture UI)');
+    setIsCancelling(false);
+    setIsInitializing(false);
+    setIsInstantClose(true); // Fermeture instantanée
+    setShowPaymentModal(false); 
+    setPaymentUrl('');
+    setFrameLoaded(false);
+    console.log('🏁 [MODAL-ACTION] Modal fermé avec succès.');
+  };
+
+  const resetModal = () => {
+    setShowPaymentModal(false);
+    setPaymentUrl('');
+    setFrameLoaded(false);
+    setIsCancelling(false);
+    setIsInstantClose(false);
+  };
+
+  // ─── Formatage téléphone ──────────────────────────────────────────────────
+  const formatPhone = (phone: string) => {
+    let clean = phone.replace(/\s/g, '');
+    if (clean.startsWith('+237')) clean = clean.substring(4);
+    else if (clean.startsWith('237')) clean = clean.substring(3);
+    return `+237${clean}`;
+  };
+
+  // ─── Étape 1 → 1.5 ───────────────────────────────────────────────────────
+  const handlePlanContinue = () => setCurrentPage(1.5);
+
+  // ─── Étape 1.5 → 2 (step 1) — API credentials ────────────────────────────
+  const handleNetflixInfoContinue = async () => {
+    if (!userFirstName.trim() || !userLastName.trim()) {
+      Alert.alert('Erreur', 'Veuillez entrer votre nom et prénom.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const idToken = await user?.getIdToken();
+      const res = await axios.post(
+        `${Config.apiUrl}/api/netflix/credentials`,
+        { userId: user?.uid, nom: userLastName.trim(), prenom: userFirstName.trim() },
+        {
+          headers: {
+            'ngrok-skip-browser-warning': 'true',
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
+      if (res.data.success && res.data.data) {
+        setNetflixEmail(res.data.data.email);
+        setNetflixPassword(res.data.data.password);
+        setCurrentPage(2);
+        setActiveStep(1);
+      } else {
+        Alert.alert('Erreur', 'Impossible de récupérer/créer le compte Netflix.');
+      }
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        Alert.alert('Erreur', 'Ce nom et prénom est déjà utilisé. Veuillez en choisir un autre.');
+      } else {
+        Alert.alert('Erreur', 'Impossible de générer le compte Netflix. Vérifiez votre connexion.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ─── Étape 3 → 4 ─────────────────────────────────────────────────────────
+  // ─── Étape 3 : Continuer après sélection de méthode ─────────────────────
+  // Orange/MTN → ouvre directement le bottom sheet (pas de step 4 téléphone)
+  // Card/PayPal → va au step 4 (formulaire dans l'app)
+  const handleMethodContinue = () => {
+    if (!selectedMethod) return;
+    if (selectedMethod === 'orangemoney' || selectedMethod === 'mtnmoney') {
+      // Déclencher le paiement mobile money immédiatement
+      handleMobileMoneyPayment();
+    } else {
+      // Carte ou PayPal → aller au formulaire de détails
+      setActiveStep(2);
+    }
+  };
+
+  // ─── Étape 4 : Payer ─────────────────────────────────────────────────────
+  const handlePaymentSubmit = async () => {
+    if (!selectedMethod) return;
+    if (selectedMethod === 'orangemoney' || selectedMethod === 'mtnmoney') {
+      await handleMobileMoneyPayment();
+    } else if (selectedMethod === 'card') {
+      await handleCardPayment();
+    } else if (selectedMethod === 'paypal') {
+      await handlePayPalPayment();
+    }
+  };
+
+  // ─── Mobile Money : flux EXACT du frontend ────────────────────────────────
+  // 1. startInitializing() → bottom sheet s'ouvre (isInitializing = true)
+  // 2. POST init-mobile-money → paymentLink, transactionId
+  // 3. openModal(link, txId) → isInitializing = false après DISPLAY_TIME (6s)
+  //    Pendant ces 6s, la WebView charge EN FOND (invisible)
+  //    Après 6s → si WebView chargée : visible. Sinon : overlay "Chargement..."
+  // 4. POST subscription/init (fire-and-forget) → verificationStep = 1
+  // 5. Socket "payment_validated" → fermeture → page 5
+  // 6. Fermeture manuelle → isCancelling + POST /cancel
+  const handleMobileMoneyPayment = async () => {
+    console.log(`💳 [PAYMENT] Lancement paiement Mobile Money pour le plan: ${selectedPlanId}`);
+    startInitializing();
+
+    try {
+      const idToken = await user?.getIdToken();
+      console.log('💳 [PAYMENT] Requête POST /api/payment/init-mobile-money...');
+      
+      const paymentRes = await axios.post(
+        `${Config.apiUrl}/api/payment/init-mobile-money`,
+        {
+          numeroOM: phoneNumber,
+          email: netflixEmail,
+          motDePasse: netflixPassword,
+          typeDePlan: selectedPlanId,
+          userId: user?.uid,
+          amount: selectedPlan?.price,
+        },
+        {
+          headers: {
+            'ngrok-skip-browser-warning': 'true',
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
+
+      if (!paymentRes.data.success || !paymentRes.data.paymentLink) {
+        console.error('❌ [PAYMENT-ERROR] Échec initiation:', paymentRes.data);
+        setShowPaymentModal(false);
+        setIsInitializing(false);
+        Alert.alert('Erreur', 'Réponse invalide du serveur de paiement.');
+        return;
+      }
+
+      const { paymentLink: link, transactionId: txId, planActivationId: paId } = paymentRes.data;
+      console.log(`✅ [PAYMENT-SUCCESS] IDs reçus: Tx=${txId}, Activation=${paId}`);
+      console.log(`🔗 [PAYMENT-SUCCESS] Link: ${link}`);
+      
+      setPlanActivationId(paId);
+      openModal(link, txId);
+
+      console.log('📝 [SUBSCRIPTION] Lancement initSubscription en background...');
+      const idToken2 = await user?.getIdToken();
+      axios.post(
+        `${Config.apiUrl}/api/subscription/init`,
+        {
+          typeDePlan: selectedPlanId,
+          email: netflixEmail,
+          motDePasse: netflixPassword,
+          planActivationId: paId,
+          userId: user?.uid,
+          transactionId: txId,
+          amount: selectedPlan?.price,
+          numeroOM: phoneNumber,
+          useOrchestration: false,
+        },
+        {
+          headers: {
+            'ngrok-skip-browser-warning': 'true',
+            Authorization: `Bearer ${idToken2}`,
+          },
+        }
+      ).then(() => {
+        console.log('📝 [SUBSCRIPTION-DONE] Processus d\'abonnement lancé avec succès.');
+        setVerificationStep((prev) => Math.max(prev, 1));
+      })
+      .catch((err) => {
+        console.error('❌ [SUBSCRIPTION-ERROR] Erreur background:', err.response?.data || err.message);
+      });
+
+    } catch (err: any) {
+      console.error('❌ [PAYMENT-CRASH] Erreur critique:', err.message);
+      setShowPaymentModal(false);
+      setIsInitializing(false);
+      Alert.alert(
+        'Erreur',
+        err.response?.data?.message || "Erreur lors de l'initialisation du paiement."
+      );
+    }
+  };
+
+  // ─── Carte ────────────────────────────────────────────────────────────────
+  const handleCardPayment = async () => {
+    setIsLoading(true);
+    try {
+      await new Promise((r) => setTimeout(r, 1500));
+      const orderNum = `YU${Math.floor(100000 + Math.random() * 900000)}`;
+      setTransactionId(orderNum);
+      setVerificationStep(2);
+      setCurrentPage(5);
+      setTimeout(() => {
+        setVerificationStep(3);
+        setTimeout(() => setCurrentPage(6), 1500);
+      }, 2000);
+    } catch {
+      Alert.alert('Erreur', 'Erreur lors du traitement de la carte.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ─── PayPal ───────────────────────────────────────────────────────────────
+  const handlePayPalPayment = async () => {
+    setIsLoading(true);
+    try {
+      await new Promise((r) => setTimeout(r, 1000));
+      setVerificationStep(1);
+      setCurrentPage(5);
+    } catch {
+      Alert.alert('Erreur', 'Erreur PayPal.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ─── Stepper ─────────────────────────────────────────────────────────────
+  const renderStepper = () => (
+    <View style={styles.stepperWrapper}>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${stepperProgress}%` as any }]} />
+      </View>
+      <View style={styles.stepsRow}>
+        {STEP_LABELS.map((label, i) => {
+          const num = i + 1;
+          const isCompleted = stepNumber > num;
+          const isActive = stepNumber === num;
+          return (
+            <View key={num} style={styles.stepItem}>
+              <View style={[
+                styles.stepCircle,
+                isActive && styles.stepCircleActive,
+                isCompleted && styles.stepCircleCompleted,
+              ]}>
+                {isCompleted
+                  ? <Ionicons name="checkmark" size={13} color="#fff" />
+                  : <Text style={[styles.stepNum, isActive && styles.stepNumActive]}>{num}</Text>}
+              </View>
+              <Text style={[styles.stepLabel, (isActive || isCompleted) && styles.stepLabelActive]}>
+                {label}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+
+  // ─── Corps selon page/étape ────────────────────────────────────────────────
+  const renderBody = () => {
+    if (currentPage === 1) {
+      return (
+        <StepPlanSelection
+          plans={plans}
+          selectedPlanId={selectedPlanId}
+          loading={plansLoading}
+          onSelectPlan={setSelectedPlanId}
+          onContinue={handlePlanContinue}
+        />
+      );
+    }
+    if (currentPage === 1.5) {
+      return (
+        <StepNetflixInfo
+          selectedPlan={selectedPlan}
+          userFirstName={userFirstName}
+          userLastName={userLastName}
+          onFirstNameChange={setUserFirstName}
+          onLastNameChange={setUserLastName}
+          onContinue={handleNetflixInfoContinue}
+          onBack={() => setCurrentPage(1)}
+          loading={isLoading}
+        />
+      );
+    }
+    if (currentPage === 2 && activeStep === 1) {
+      return (
+        <StepPaymentMethod
+          selectedPlan={selectedPlan}
+          selectedMethod={selectedMethod}
+          onSelectMethod={setSelectedMethod}
+          onContinue={handleMethodContinue}
+          onBack={() => setCurrentPage(1.5)}
+        />
+      );
+    }
+    if (currentPage === 2 && activeStep === 2 && selectedMethod) {
+      return (
+        <StepPaymentDetails
+          selectedPlan={selectedPlan}
+          selectedMethod={selectedMethod}
+          phoneNumber={phoneNumber}
+          onPhoneChange={setPhoneNumber}
+          cardNumber={cardNumber}
+          cardName={cardName}
+          expiryDate={expiryDate}
+          cvv={cvv}
+          onCardNumberChange={setCardNumber}
+          onCardNameChange={setCardName}
+          onExpiryChange={setExpiryDate}
+          onCvvChange={setCvv}
+          onSubmit={handlePaymentSubmit}
+          onBack={() => setActiveStep(1)}
+          isLoading={isLoading}
+        />
+      );
+    }
+    if (currentPage === 5) {
+      return <StepProcessing verificationStep={verificationStep} />;
+    }
+    if (currentPage === 6) {
+      return (
+        <StepReceipt
+          selectedPlan={selectedPlan}
+          netflixEmail={netflixEmail}
+          transactionId={transactionId}
+          onGoToActivations={() => router.replace('/(tabs)/activations')}
+          onGoHome={() => router.replace('/(tabs)/')}
+        />
+      );
+    }
+    return null;
+  };
+
+  // ─── Rendu principal ──────────────────────────────────────────────────────
+  return (
+    <View style={styles.container}>
+      {/* Loader global (page 1.5 seulement) */}
+      <AppLoader visible={isLoading && currentPage === 1.5} message="Vérification..." />
+
+      {/* Header avec action Home */}
+      <PageHeader
+        title="Réabonnement"
+        subtitle="Choisissez votre plan Netflix"
+        icon="play-circle"
+        variant="glass"
+        rightElement={
+          <TouchableOpacity 
+            onPress={handleHome}
+            style={styles.homeHeaderBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="home" size={24} color="#fff" />
+          </TouchableOpacity>
+        }
+      />
+
+      {/* Stepper */}
+      {renderStepper()}
+
+      {/* Corps */}
+      <View style={styles.body}>{renderBody()}</View>
+
+      {/* ── Bottom Sheet de paiement Mobile Money ── */}
+      {/* Réplique exacte de <ion-modal [initialBreakpoint]="0.8"> */}
+      <PaymentBottomSheet
+        isOpen={showPaymentModal}
+        paymentUrl={paymentUrl}
+        isInitializing={isInitializing}
+        isCancelling={isCancelling}
+        frameLoaded={frameLoaded}
+        isInstantClose={isInstantClose}
+        onClose={closePaymentModal}
+        onFrameLoad={() => setFrameLoaded(true)}
+        onUIValidated={() => {
+          // DETECTION TURBO
+          if (currentPage < 5) {
+            console.log('⚡ [TURBO-UI] Succès visible dans WebView ! Passage IMMÉDIAT à l\'étape d\'activation.');
+            closeModalOnSuccess();
+            setVerificationStep(2);
+            setCurrentPage(5);
+          }
+        }}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#fff' },
+  body: { flex: 1 },
+  // ── Header Action ──
+  homeHeaderBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  // ── Stepper ──
+  stepperWrapper: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  progressTrack: {
+    height: 4,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 2,
+    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#dc2626',
+    borderRadius: 2,
+  },
+  stepsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  stepItem: {
+    alignItems: 'center',
+    width: 50,
+  },
+  stepCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+  },
+  stepCircleActive: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#dc2626',
+  },
+  stepCircleCompleted: {
+    backgroundColor: '#dc2626',
+    borderColor: '#dc2626',
+  },
+  stepNum: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94a3b8',
+  },
+  stepNumActive: { color: '#dc2626' },
+  stepLabel: {
+    fontSize: 9,
+    color: '#94a3b8',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  stepLabelActive: { color: '#475569' },
+});

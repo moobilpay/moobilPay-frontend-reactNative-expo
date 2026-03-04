@@ -34,7 +34,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.moobilPay.app",
+      "package": "com.moobilpay.com",
       "signingConfig": {
         "storeFile": "./debug.keystore",
         "storePassword": "android",
