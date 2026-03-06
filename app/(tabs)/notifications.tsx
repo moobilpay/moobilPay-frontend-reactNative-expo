@@ -1,38 +1,70 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PageHeader } from '../../src/components/PageHeader';
+import { useAuth } from '../../src/features/auth/context/AuthContext';
+import { Config } from '../../src/api/config';
+import { storage } from '../../src/utils/storage';
+import { usePaymentSocket } from '../../src/features/payment/hooks/usePaymentSocket';
+import axios from 'axios';
 
 const { width, height } = Dimensions.get('window');
 
-const NotificationCard = ({ title, body, time, type, isRead }: any) => {
+const NotificationCard = ({ title, body, createdAt, type, isRead, onPress }: any) => {
   const getIcon = () => {
     switch (type) {
-      case 'payment': return 'card';
+      case 'payment':
+      case 'success': return 'card';
+      case 'subscription':
       case 'account': return 'person';
-      case 'security': return 'shield-checkmark';
+      case 'security':
+      case 'warning': return 'shield-checkmark';
       default: return 'notifications';
     }
   };
 
   const getColor = () => {
     switch (type) {
-      case 'payment': return '#10b981';
+      case 'payment':
+      case 'success': return '#10b981';
+      case 'subscription':
       case 'account': return '#3b82f6';
-      case 'security': return '#ef4444';
+      case 'security':
+      case 'warning': return '#ef4444';
       default: return '#64748b';
     }
   };
 
+  const getTimeAgo = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'À l\'instant';
+    if (diffMins < 60) return `${diffMins} min`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays === 1) return 'Hier';
+    if (diffDays < 7) return `${diffDays} j`;
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  };
+
   return (
-    <TouchableOpacity style={[styles.notifCard, !isRead && styles.unreadCard]}>
+    <TouchableOpacity 
+      style={[styles.notifCard, !isRead && styles.unreadCard]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={[styles.cardIconWrapper, { backgroundColor: getColor() + '15' }]}>
         <Ionicons name={getIcon() as any} size={22} color={getColor()} />
       </View>
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>{title}</Text>
-          <Text style={styles.cardTime}>{time}</Text>
+          <Text style={styles.cardTime}>{getTimeAgo(createdAt)}</Text>
         </View>
         <Text style={styles.cardBody} numberOfLines={2}>{body}</Text>
       </View>
@@ -42,15 +74,90 @@ const NotificationCard = ({ title, body, time, type, isRead }: any) => {
 };
 
 export default function NotificationsScreen() {
-  const notifications = [
-    { id: 1, title: 'Paiement Réussi', body: 'Votre abonnement Netflix a été renouvelé avec succès.', time: 'il y a 2h', type: 'payment', isRead: false },
-    { id: 2, title: 'Nouvel Appareil', body: 'Une nouvelle connexion a été détectée sur votre compte.', time: 'il y a 5h', type: 'security', isRead: true },
-    { id: 3, title: 'Mise à jour Profil', body: 'Vos informations personnelles ont été mises à jour.', time: 'Hier', type: 'account', isRead: true },
-  ];
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [localReadIds, setLocalReadIds] = useState<Set<string>>(new Set());
+
+  const fetchNotifications = useCallback(async (isRefreshing = false) => {
+    if (!user?.uid) return;
+
+    if (!isRefreshing && notifications.length === 0) {
+      const cached = await storage.get(`notifications_${user.uid}`);
+      if (cached) {
+        setNotifications(cached);
+        setLoading(false);
+      }
+    }
+
+    if (isRefreshing) setRefreshing(true);
+    else if (notifications.length === 0) setLoading(true);
+
+    try {
+      const response = await axios.get(`${Config.apiUrl}/api/notification/user`, {
+        params: { userId: user.uid }
+      });
+
+      if (response.data.success) {
+        const newList = response.data.data || [];
+        if (JSON.stringify(newList) !== JSON.stringify(notifications)) {
+          setNotifications(newList);
+          await storage.set(`notifications_${user.uid}`, newList);
+        }
+      }
+    } catch (err) {
+      console.error("❌ [NOTIFICATIONS] Error fetching:", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.uid, notifications]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [user?.uid]);
+
+  const { socket } = usePaymentSocket({
+    onNotificationReceived: () => {
+      console.log("🔥 [NOTIFICATIONS] New notification via Socket...");
+      fetchNotifications(true);
+    }
+  });
+
+  const markAsRead = async (notif: any) => {
+    if (!user?.uid || isRead(notif)) return;
+
+    // Mise à jour optimiste
+    setLocalReadIds(prev => new Set(prev).add(notif.id));
+
+    // Appel API silencieux
+    try {
+      if (socket) {
+        socket.emit('isReadNotification', {
+          userId: user.uid,
+          notificationId: notif.id,
+          notificationIdGroup: notif.idGroup
+        });
+      }
+      
+      // On pourrait aussi faire un PUT /api/notification/markAsRead ici si besoin
+    } catch (err) {
+      console.warn("⚠️ [NOTIFICATIONS] Error marking as read:", err);
+    }
+  };
+
+  const isRead = (notif: any) => {
+    if (localReadIds.has(notif.id)) return true;
+    if (!user?.uid) return true;
+    const readArray = Array.isArray(notif.isRead) ? notif.isRead : [];
+    return readArray.includes(user.uid);
+  };
+
+  const unreadCount = notifications.filter(n => !isRead(n)).length;
 
   return (
     <View style={styles.container}>
-      {/* Background Blobs for Glass Effect parity */}
       <View style={styles.backgroundBlobs}>
         <View style={[styles.blob, styles.blob1]} />
         <View style={[styles.blob, styles.blob2]} />
@@ -58,7 +165,7 @@ export default function NotificationsScreen() {
 
       <PageHeader 
         title="Mes Notifications" 
-        subtitle="3 nouvelles" 
+        subtitle={unreadCount > 0 ? `${unreadCount} nouvelles` : "À jour"} 
         icon="notifications" 
         variant="glass"
         rightElement={
@@ -71,14 +178,26 @@ export default function NotificationsScreen() {
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => fetchNotifications(true)} />
+        }
       >
-        <View style={styles.notifList}>
-          {notifications.map((notif) => (
-            <NotificationCard key={notif.id} {...notif} />
-          ))}
-        </View>
-
-        {notifications.length === 0 && (
+        {loading && notifications.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#dc2626" />
+          </View>
+        ) : notifications.length > 0 ? (
+          <View style={styles.notifList}>
+            {notifications.map((notif) => (
+              <NotificationCard 
+                key={notif.id} 
+                {...notif} 
+                isRead={isRead(notif)}
+                onPress={() => markAsRead(notif)}
+              />
+            ))}
+          </View>
+        ) : (
           <View style={styles.emptyState}>
             <View style={styles.iconWrapper}>
               <Ionicons name="notifications-off-outline" size={64} color="#cbd5e1" />
@@ -223,5 +342,10 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
     textAlign: 'center',
     marginTop: 10,
+  },
+  loadingContainer: {
+    padding: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

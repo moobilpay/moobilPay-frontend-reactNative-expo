@@ -3,10 +3,12 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Platform, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const primaryColor = '#ef4444';
   const inactiveColor = '#64748b';
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -14,7 +16,13 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: primaryColor,
         tabBarInactiveTintColor: inactiveColor,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: Platform.OS === 'android' ? 65 + insets.bottom : undefined,
+            paddingBottom: Platform.OS === 'android' ? 8 + insets.bottom : 8,
+          }
+        ],
         tabBarLabelStyle: styles.tabLabel,
         tabBarBackground: () => (
           Platform.OS === 'ios' ? (
@@ -81,13 +89,11 @@ const styles = StyleSheet.create({
         position: 'absolute',
       },
       android: {
-        height: 65,
         elevation: 8,
         borderTopWidth: 1,
         borderTopColor: '#f1f5f9',
       },
     }),
-    paddingBottom: 8,
     paddingTop: 8,
   },
   tabLabel: {

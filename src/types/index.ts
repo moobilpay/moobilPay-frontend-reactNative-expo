@@ -14,4 +14,5 @@ export interface Users {
     isMarchand: boolean;
     statistique: number;
     fastFoodId: string;
+    fcmToken?: string;
 }

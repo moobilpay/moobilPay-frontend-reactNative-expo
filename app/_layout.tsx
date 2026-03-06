@@ -4,16 +4,21 @@ import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/features/auth/context/AuthContext';
+import { SocketProvider } from '../src/context/SocketContext';
 import * as SplashScreen from 'expo-splash-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNotifications } from '../src/features/notifications/hooks/useNotifications';
 
 // Empêche le splash screen de se cacher automatiquement
 SplashScreen.preventAutoHideAsync();
 
-function AppInitializer() {
+function AppInitializer({ onSplashHidden }: { onSplashHidden: () => void }) {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  
+  // Initialisation des notifications push
+  useNotifications();
 
   useEffect(() => {
     async function checkNavigation() {
@@ -47,19 +52,23 @@ function AppInitializer() {
       setTimeout(async () => {
         try {
           await SplashScreen.hideAsync();
+          onSplashHidden();
         } catch (e) {
           // Peut arriver si déjà caché
+          onSplashHidden();
         }
       }, 500);
     }
 
     checkNavigation();
-  }, [user, userData, loading, segments]);
+  }, [user, userData, loading, segments, onSplashHidden]);
 
   return null;
 }
 
 export default function RootLayout() {
+  const [splashHidden, setSplashHidden] = useState(false);
+
   useEffect(() => {
     if (Platform.OS === 'android') {
       import('expo-navigation-bar').then((NavigationBar) => {
@@ -73,9 +82,15 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <AppInitializer />
-        <StatusBar style="light" translucent={true} backgroundColor="transparent" />
-        <Stack screenOptions={{ headerShown: false }} />
+        <SocketProvider>
+          <AppInitializer onSplashHidden={() => setSplashHidden(true)} />
+          <StatusBar 
+            style={splashHidden ? "light" : "dark"} 
+            translucent={true} 
+            backgroundColor="transparent" 
+          />
+          <Stack screenOptions={{ headerShown: false }} />
+        </SocketProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

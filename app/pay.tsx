@@ -31,8 +31,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { io, Socket } from 'socket.io-client';
+// import { io, Socket } from 'socket.io-client'; // Supprimé
 import axios from 'axios';
+import { usePaymentSocket } from '../src/features/payment/hooks/usePaymentSocket';
 
 import { PageHeader } from '../src/components/PageHeader';
 import { AppLoader } from '../src/components/AppLoader';
@@ -69,7 +70,7 @@ function getStepNumber(page: number, activeStep: number): number {
 export default function ReabonnementScreen() {
   const router = useRouter();
   const { user, userData } = useAuth();
-  const socketRef = useRef<Socket | null>(null);
+  // const socketRef = useRef<Socket | null>(null); // Supprimé
 
   // ── Navigation ──
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -131,34 +132,7 @@ export default function ReabonnementScreen() {
     }
   }, [userData, user]);
 
-  useEffect(() => {
-    if (user?.uid) {
-      console.log('🔌 [INIT] Initialisation du socket pour UID:', user.uid);
-      initSocket();
-    }
-    
-    // Gérer le retour au premier plan (Foreground)
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active') {
-        console.log('✨ [APP-STATE] Application de retour au premier plan');
-        
-        // Reconnecter le socket si besoin
-        if (socketRef.current && !socketRef.current.connected) {
-          console.log('📡 [SOCKET] Tentative de RECONNEXION forcée...');
-          socketRef.current.connect();
-        }
-      }
-    });
-
-    return () => {
-      console.log('🔌 [pay] Nettoyage final Socket');
-      subscription.remove();
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-    };
-  }, [user?.uid]); // ON NE DÉPEND PLUS de currentPage ou transactionId
+  // ON NE GÈRE PLUS LE SOCKET ICI, C'EST DÉPORTÉ DANS LE HOOK CI-DESSOUS
 
 
   // ─── Plans ───────────────────────────────────────────────────────────────
@@ -210,79 +184,33 @@ export default function ReabonnementScreen() {
     router.replace('/(tabs)/');
   };
 
-  // ─── Socket ───────────────────────────────────────────────────────────────
-  const initSocket = () => {
-    if (socketRef.current) {
-      console.log('📡 [SOCKET] Déconnexion de l\'instance précédente...');
-      socketRef.current.disconnect();
-    }
-
-    console.log('📡 [SOCKET] Tentative de connexion sur:', Config.apiUrl);
-    const socket = io(Config.apiUrl, {
-      transports: ['websocket'],
-      forceNew: true
-    });
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      console.log(`✅ [SOCKET] Connecté ! ID: ${socket.id}`);
-      if (user?.uid) {
-        console.log(`🔗 [SOCKET] Emission 'join_user' pour UID: ${user.uid} (Room attendue sur serveur)`);
-        socket.emit('join_user', user.uid);
-      } else {
-        console.warn('⚠️ [SOCKET] Pas d\'UID disponible pour join_user (User non connecté)');
-      }
-    });
-
-    socket.on('connect_error', (err) => {
-      console.error('❌ [SOCKET] Erreur de connexion:', err.message);
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.warn(`⚠️ [SOCKET] Déconnecté. Raison: ${reason}`);
-    });
-
-    socket.off('payment_validated');
-    socket.off('activationcreated');
-
-    socket.on('payment_validated', (data: any) => {
-      console.log('💰 [SOCKET-EVENT] payment_validated REÇU ! Data:', JSON.stringify(data, null, 2));
-      
+  // ─── Socket (Nouvelle Architecture) ──────────────────────────────────────
+  usePaymentSocket({
+    onPaymentValidated: (data) => {
+      console.log('💰 [SOCKET-EVENT] payment_validated REÇU !');
       const incomingId = data.data?.userId ? String(data.data.userId).trim() : null;
       const currentUid = user?.uid ? String(user.uid).trim() : null;
       const currentDbId = userData?.id ? String(userData.id).trim() : null;
 
-      console.log(`🔍 [SOCKET-MATCH] Comparaison IDs: Reçu(${incomingId}) vs UID(${currentUid}) | DBID(${currentDbId})`);
-
       if (data.success && (incomingId === currentUid || (currentDbId && incomingId === currentDbId))) {
         if (currentPageRef.current < 5) {
-          console.log('🎯 [SOCKET-MATCH] SUCCÈS PAIEMENT ! Transition vers Page 5 (Vérification Step 2)');
           closeModalOnSuccess();
           setVerificationStep(2);
           setCurrentPage(5);
-        } else {
-          console.log('ℹ️ [SOCKET-MATCH] Paiement déjà traité, ignoré.');
         }
-      } else {
-        console.warn('❌ [SOCKET-MATCH] ID non correspondant ou échec du succès.');
       }
-    });
-
-    socket.on('activationcreated', (data: any) => {
-      console.log('🚀 [SOCKET-EVENT] activationcreated REÇU ! Data:', JSON.stringify(data, null, 2));
+    },
+    onActivationCreated: (data) => {
+      console.log('🚀 [SOCKET-EVENT] activationcreated REÇU !');
       if (data.success && currentPageRef.current < 6) {
-        console.log('✅ [SOCKET-MATCH] ACTIVATION TERMINÉE ! Préparation transition Page 6.');
         closeModalOnSuccess();
         setVerificationStep(4);
         setTimeout(() => {
-          console.log('📜 [TRANSITION] Navigation finale vers le reçu (Page 6)');
           setCurrentPage(6);
-        }, 3500); // Passage plus lent (3.5s) comme demandé
-      } else {
-        console.log('ℹ️ [SOCKET-MATCH] Activation ignorée (Déjà sur page 6 ou success=false)');
+        }, 3500);
       }
-    });
-  };
+    }
+  });
 
   // ─── PaymentModalService — startInitializing() ────────────────────────────
   // Appelé avant l'API → ouvre le bottom sheet en état "initializing"

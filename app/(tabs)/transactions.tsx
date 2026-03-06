@@ -1,41 +1,122 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PageHeader } from '../../src/components/PageHeader';
+import axios from 'axios';
+import { useAuth } from '../../src/features/auth/context/AuthContext';
+import { Config } from '../../src/api/config';
+import { storage } from '../../src/utils/storage';
+import { usePaymentSocket } from '../../src/features/payment/hooks/usePaymentSocket';
 
 const { width } = Dimensions.get('window');
 
-const TransactionItem = ({ label, date, amount, icon, color, description }: any) => (
-  <View style={styles.transactionRow}>
-    <View style={[styles.iconWrapper, { backgroundColor: color }]}>
-      <Ionicons name={icon} size={20} color="#fff" />
+const TransactionItem = ({ label, date, amount, status }: any) => {
+  const isPositive = amount.toString().startsWith('+');
+  const getIcon = () => {
+    if (label.toLowerCase().includes('netflix')) return 'play-circle';
+    if (label.toLowerCase().includes('spotify')) return 'musical-notes';
+    if (label.toLowerCase().includes('disney')) return 'star';
+    return isPositive ? 'arrow-up-circle' : 'card';
+  };
+
+  const getColor = () => {
+    if (label.toLowerCase().includes('netflix')) return '#ef4444';
+    if (label.toLowerCase().includes('spotify')) return '#1db954';
+    if (label.toLowerCase().includes('disney')) return '#3b82f6';
+    return isPositive ? '#10b981' : '#64748b';
+  };
+
+  return (
+    <View style={styles.transactionRow}>
+      <View style={[styles.iconWrapper, { backgroundColor: getColor() }]}>
+        <Ionicons name={getIcon() as any} size={20} color="#fff" />
+      </View>
+      <View style={styles.transactionContent}>
+        <Text style={styles.transactionLabel}>{label}</Text>
+        <Text style={styles.transactionDescription}>{status} • {date}</Text>
+      </View>
+      <View style={styles.transactionValueGroup}>
+        <Text style={[styles.amountText, { color: isPositive ? '#22c55e' : '#1e293b' }]}>
+          {isPositive ? '' : '-'}{amount}F
+        </Text>
+      </View>
     </View>
-    <View style={styles.transactionContent}>
-      <Text style={styles.transactionLabel}>{label}</Text>
-      <Text style={styles.transactionDescription}>{description} • {date}</Text>
-    </View>
-    <View style={styles.transactionValueGroup}>
-      <Text style={[styles.amountText, { color: amount.startsWith('+') ? '#22c55e' : '#1e293b' }]}>
-        {amount}
-      </Text>
-    </View>
-  </View>
-);
+  );
+};
 
 export default function TransactionsScreen() {
+  const { user } = useAuth();
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [totalSpent, setTotalSpent] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchTransactions = useCallback(async (isRefreshing = false) => {
+    if (!user?.uid) return;
+
+    if (!isRefreshing && transactions.length === 0) {
+      const cached = await storage.get(`transactions_${user.uid}`);
+      if (cached) {
+        setTransactions(cached.list || []);
+        setTotalSpent(cached.totalSpent || 0);
+        setLoading(false);
+      }
+    }
+
+    if (isRefreshing) setRefreshing(true);
+    else if (transactions.length === 0) setLoading(true);
+
+    try {
+      const response = await axios.get(`${Config.apiUrl}/api/transaction/user/${user.uid}`);
+      if (response.data.success) {
+        const newList = response.data.data || [];
+        const newTotal = response.data.totalSpent || 0;
+        
+        if (JSON.stringify(newList) !== JSON.stringify(transactions)) {
+          setTransactions(newList);
+          setTotalSpent(newTotal);
+          await storage.set(`transactions_${user.uid}`, { list: newList, totalSpent: newTotal });
+        }
+      }
+    } catch (err) {
+      console.error("❌ [TRANSACTIONS] Error:", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.uid, transactions]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [user?.uid]);
+
+  usePaymentSocket({
+    onPaymentValidated: () => fetchTransactions(true),
+    onActivationCreated: () => fetchTransactions(true)
+  });
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '...';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+  };
+
   return (
     <View style={styles.container}>
       <PageHeader 
         title="Mes Transactions" 
-        amount="12,500F"
+        amount={`${totalSpent.toLocaleString()} F`}
         icon="card" 
         variant="premium"
-        totalStats={{ value: "8", label: "TOTAL" }}
+        totalStats={{ value: transactions.length.toString(), label: "TOTAL" }}
       />
       
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => fetchTransactions(true)} />
+        }
       >
         {/* Section Aperçu */}
         <View style={styles.sectionHeader}>
@@ -48,7 +129,7 @@ export default function TransactionsScreen() {
               <Ionicons name="wallet" size={18} color="#fff" />
             </View>
             <View style={styles.statInfo}>
-              <Text style={styles.statValueLarge}>12,500F</Text>
+              <Text style={styles.statValueLarge}>{totalSpent.toLocaleString()}F</Text>
               <Text style={styles.statLabelSmall}>DÉPENSÉ</Text>
             </View>
           </View>
@@ -58,7 +139,7 @@ export default function TransactionsScreen() {
               <Ionicons name="trending-up" size={18} color="#fff" />
             </View>
             <View style={styles.statInfo}>
-              <Text style={styles.statValueLarge}>8</Text>
+              <Text style={styles.statValueLarge}>{transactions.length}</Text>
               <Text style={styles.statLabelSmall}>TRANSAC.</Text>
             </View>
           </View>
@@ -83,40 +164,28 @@ export default function TransactionsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.transactionsCard}>
-          <TransactionItem 
-            label="Netflix Premium" 
-            description="Abonnement mensuel"
-            date="15 Jan 2024" 
-            amount="-2,000F" 
-            icon="play-circle" 
-            color="#ef4444" 
-          />
-          <TransactionItem 
-            label="Spotify Premium" 
-            description="Abonnement mensuel"
-            date="12 Jan 2024" 
-            amount="-800F" 
-            icon="musical-notes" 
-            color="#3b82f6" 
-          />
-          <TransactionItem 
-            label="Disney+ Premium" 
-            description="Abonnement mensuel"
-            date="10 Jan 2024" 
-            amount="-1,500F" 
-            icon="star" 
-            color="#f59e0b" 
-          />
-          <TransactionItem 
-            label="Remboursement" 
-            description="Annulation service"
-            date="08 Jan 2024" 
-            amount="+1,200F" 
-            icon="arrow-up-circle" 
-            color="#10b981" 
-          />
-        </View>
+        {loading && transactions.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#dc2626" />
+          </View>
+        ) : transactions.length > 0 ? (
+          <View style={styles.transactionsCard}>
+            {transactions.map((item) => (
+              <TransactionItem 
+                key={item.id}
+                label={item.reason || item.planName || 'Paiement'} 
+                status={item.status === 'success' ? 'Validé' : 'En attente'}
+                date={formatDate(item.dateCreation)} 
+                amount={item.amount} 
+              />
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="receipt-outline" size={64} color="#e2e8f0" />
+            <Text style={styles.emptyText}>Aucune transaction trouvée</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -249,5 +318,19 @@ const styles = StyleSheet.create({
   amountText: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    padding: 40,
+    gap: 12,
+  },
+  emptyText: {
+    color: '#cbd5e1',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
