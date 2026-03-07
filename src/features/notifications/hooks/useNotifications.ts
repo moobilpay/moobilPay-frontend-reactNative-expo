@@ -8,16 +8,20 @@ import { storage } from '../../../utils/storage';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 
+const IS_NOTIFICATIONS_ENABLED = Platform.OS !== 'web' && process.env.EXPO_PUBLIC_DISABLE_NOTIFICATIONS !== 'true';
+
 // Configuration du comportement des notifications quand l'app est au premier plan
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
+if (IS_NOTIFICATIONS_ENABLED) {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+        }),
+    });
+}
 
 export function useNotifications() {
     const { user: firebaseUser, userData: user } = useAuth();
@@ -44,6 +48,11 @@ export function useNotifications() {
     }, [user, firebaseUser]);
 
     useEffect(() => {
+        if (!IS_NOTIFICATIONS_ENABLED) {
+            console.log('ℹ️ [NOTIFICATIONS] Désactivées sur le Web ou via variable d\'environnement.');
+            return;
+        }
+
         // 1. Gérer le clic quand l'application était COMPLÈTEMENT fermée (Cold Start)
         Notifications.getLastNotificationResponseAsync().then(response => {
             if (response) {
@@ -53,7 +62,7 @@ export function useNotifications() {
                     router.push('/(tabs)/notifications');
                 }, 1500);
             }
-        });
+        }).catch(err => console.log('Information: getLastNotificationResponseAsync non supporté ici:', err.message));
 
         registerForPushNotificationsAsync().then(token => {
             setExpoPushToken(token);
