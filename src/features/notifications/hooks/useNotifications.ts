@@ -8,16 +8,20 @@ import { storage } from '../../../utils/storage';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 
+const IS_NOTIFICATIONS_ENABLED = Platform.OS !== 'web' && process.env.EXPO_PUBLIC_DISABLE_NOTIFICATIONS !== 'true';
+
 // Configuration du comportement des notifications quand l'app est au premier plan
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
+if (IS_NOTIFICATIONS_ENABLED) {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+        }),
+    });
+}
 
 export function useNotifications() {
     const { user: firebaseUser, userData: user } = useAuth();
@@ -48,6 +52,11 @@ export function useNotifications() {
 
     // Redirection au clic sur une notification (seulement quand le user est authentifié)
     useEffect(() => {
+        if (!IS_NOTIFICATIONS_ENABLED) {
+            console.log('ℹ️ [NOTIFICATIONS] Désactivées sur le Web ou via variable d\'environnement.');
+            return;
+        }
+
         if (lastNotificationResponse && user) {
             const currentResponseId = lastNotificationResponse.notification.request.identifier;
 
