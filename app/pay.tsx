@@ -666,6 +666,10 @@ export default function ReabonnementScreen() {
             setCurrentPage(5);
           }
         }}
+        onUIFailed={() => {
+          console.log('❌ [TURBO-UI] Échec ou annulation visible dans WebView ! Fermeture immédiate.');
+          closePaymentModal();
+        }}
       />
     </View>
   );

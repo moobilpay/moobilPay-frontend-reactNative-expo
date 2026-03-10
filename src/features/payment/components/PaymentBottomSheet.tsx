@@ -36,6 +36,7 @@ interface Props {
   onClose: () => void;
   onFrameLoad: () => void;
   onUIValidated?: () => void; // Nouveau: pour fermer dès que la WebView voit le succès
+  onUIFailed?: () => void; // Nouveau: pour fermer dès que la WebView voit un échec
 }
 
 export default function PaymentBottomSheet({
@@ -48,6 +49,7 @@ export default function PaymentBottomSheet({
   onClose,
   onFrameLoad,
   onUIValidated,
+  onUIFailed,
 }: Props) {
   const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -231,8 +233,36 @@ export default function PaymentBottomSheet({
                     console.log('🌐 [WEBVIEW-NAV] Titre:', navState.title);
                   }}
                   onMessage={(event) => {
-                    console.log('✉️ [WEBVIEW-MSG] Message reçu:', event.nativeEvent.data);
+                    try {
+                      const data = JSON.parse(event.nativeEvent.data);
+                      if (data.type === 'PAYMENT_FAILED') {
+                         console.log('❌ [TURBO-DETECTION] Échec détecté via le contenu de la page ! Fermeture précoce...');
+                         if (onUIFailed) onUIFailed();
+                         else onClose();
+                      }
+                    } catch (e) {
+                      console.log('✉️ [WEBVIEW-MSG] Message reçu:', event.nativeEvent.data);
+                    }
                   }}
+                  injectedJavaScript={`
+                    (function() {
+                      function checkFailure() {
+                        if (document.body) {
+                          var text = document.body.innerText.toLowerCase();
+                          // Mots-clés indiquant un échec ou annulation par l'utilisateur
+                          if (text.includes("echoue") || text.includes("échoué") || 
+                              text.includes("transaction a echoue") || text.includes("transaction a échoué") ||
+                              text.includes("payment failed") || text.includes("annulé")) {
+                            window.ReactNativeWebView.postMessage(JSON.stringify({ type: "PAYMENT_FAILED" }));
+                            return; // Stop checking if we found it
+                          }
+                        }
+                        setTimeout(checkFailure, 2000); // Revérifie toutes les 2 secondes
+                      }
+                      setTimeout(checkFailure, 2000);
+                    })();
+                    true;
+                  `}
                   javaScriptEnabled
                   domStorageEnabled
                   startInLoadingState={false}
