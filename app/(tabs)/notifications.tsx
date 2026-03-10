@@ -169,8 +169,12 @@ export default function NotificationsScreen() {
         icon="notifications" 
         variant="glass"
         rightElement={
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="ellipsis-vertical" size={20} color="#fff" />
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => fetchNotifications(true)}
+            disabled={refreshing}
+          >
+            <Ionicons name="refresh" size={22} color="#fff" />
           </TouchableOpacity>
         }
       />

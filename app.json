@@ -20,7 +20,7 @@
     },
     "android": {
       "statusBar": {
-        "barStyle": "dark-content",
+        "barStyle": "light-content",
         "backgroundColor": "#00000000",
         "translucent": true
       },

@@ -68,33 +68,35 @@ export default function StepNetflixInfo({
           Nous créerons votre compte Netflix automatiquement
         </Text>
 
-        <View style={sharedStyles.inputGroup}>
-          <Text style={sharedStyles.label}>Prénom</Text>
-          <View style={sharedStyles.inputWrapper}>
-            <Ionicons name="person-outline" size={20} color="#94a3b8" />
-            <TextInput
-              style={sharedStyles.input}
-              placeholder="Votre prénom"
-              placeholderTextColor="#94a3b8"
-              value={userFirstName}
-              onChangeText={onFirstNameChange}
-              autoCapitalize="words"
-            />
+        <View style={styles.nameRow}>
+          <View style={[sharedStyles.inputGroup, { flex: 1 }]}>
+            <Text style={sharedStyles.label}>Nom</Text>
+            <View style={sharedStyles.inputWrapper}>
+              <Ionicons name="person-outline" size={20} color="#94a3b8" />
+              <TextInput
+                style={sharedStyles.input}
+                placeholder="Votre nom"
+                placeholderTextColor="#94a3b8"
+                value={userLastName}
+                onChangeText={onLastNameChange}
+                autoCapitalize="words"
+              />
+            </View>
           </View>
-        </View>
 
-        <View style={sharedStyles.inputGroup}>
-          <Text style={sharedStyles.label}>Nom</Text>
-          <View style={sharedStyles.inputWrapper}>
-            <Ionicons name="person-outline" size={20} color="#94a3b8" />
-            <TextInput
-              style={sharedStyles.input}
-              placeholder="Votre nom de famille"
-              placeholderTextColor="#94a3b8"
-              value={userLastName}
-              onChangeText={onLastNameChange}
-              autoCapitalize="words"
-            />
+          <View style={[sharedStyles.inputGroup, { flex: 1 }]}>
+            <Text style={sharedStyles.label}>Prénom</Text>
+            <View style={sharedStyles.inputWrapper}>
+              <Ionicons name="person-outline" size={20} color="#94a3b8" />
+              <TextInput
+                style={sharedStyles.input}
+                placeholder="Votre prénom"
+                placeholderTextColor="#94a3b8"
+                value={userFirstName}
+                onChangeText={onFirstNameChange}
+                autoCapitalize="words"
+              />
+            </View>
           </View>
         </View>
 
@@ -165,5 +167,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748b',
     marginBottom: 20,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
 });
