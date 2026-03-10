@@ -88,27 +88,29 @@ export default function StepPaymentMethod({
       </View>
 
       {/* Method list */}
-      <View style={styles.methodsList}>
+      <View style={styles.methodsGrid}>
         {METHODS.map((m) => {
           const isSelected = selectedMethod === m.id;
           return (
             <TouchableOpacity
               key={m.id}
-              style={[styles.methodRow, isSelected && styles.methodRowSelected]}
+              style={[styles.methodCard, isSelected && styles.methodCardSelected]}
               onPress={() => onSelectMethod(m.id)}
               activeOpacity={0.85}
             >
-              <View style={[styles.methodIconBox, { backgroundColor: m.iconBg }]}>
-                <Ionicons name={m.iconName} size={24} color={m.iconColor} />
+              <View style={styles.cardTopRow}>
+                <View style={[styles.methodIconBox, { backgroundColor: m.iconBg }]}>
+                  <Ionicons name={m.iconName} size={26} color={m.iconColor} />
+                </View>
+                <View style={[styles.radioOuter, isSelected && styles.radioOuterSelected]}>
+                  {isSelected && <View style={styles.radioInner} />}
+                </View>
               </View>
               <View style={styles.methodTextBlock}>
-                <Text style={[styles.methodLabel, isSelected && styles.methodLabelSelected]}>
+                <Text style={[styles.methodLabel, isSelected && styles.methodLabelSelected]} numberOfLines={1}>
                   {m.label}
                 </Text>
-                <Text style={styles.methodSubtitle}>{m.subtitle}</Text>
-              </View>
-              <View style={[styles.radioOuter, isSelected && styles.radioOuterSelected]}>
-                {isSelected && <View style={styles.radioInner} />}
+                <Text style={styles.methodSubtitle} numberOfLines={2}>{m.subtitle}</Text>
               </View>
             </TouchableOpacity>
           );
@@ -136,37 +138,44 @@ export default function StepPaymentMethod({
 }
 
 const styles = StyleSheet.create({
-  methodsList: {
+  methodsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 12,
     marginBottom: 8,
   },
-  methodRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+  methodCard: {
+    width: '48%', // 2 colonnes dans la grille
+    padding: 14,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
     borderRadius: 18,
-    gap: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 1,
   },
-  methodRowSelected: {
+  methodCardSelected: {
     borderColor: '#dc2626',
-    backgroundColor: 'rgba(220,38,38,0.04)',
+    backgroundColor: '#fff',
     shadowColor: '#dc2626',
     shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 3,
   },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
   methodIconBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -174,7 +183,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   methodLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#1e293b',
   },
@@ -182,14 +191,15 @@ const styles = StyleSheet.create({
     color: '#dc2626',
   },
   methodSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94a3b8',
-    marginTop: 2,
+    marginTop: 4,
+    lineHeight: 14,
   },
   radioOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: '#cbd5e1',
     alignItems: 'center',
@@ -199,9 +209,9 @@ const styles = StyleSheet.create({
     borderColor: '#dc2626',
   },
   radioInner: {
-    width: 11,
-    height: 11,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#dc2626',
   },
 });

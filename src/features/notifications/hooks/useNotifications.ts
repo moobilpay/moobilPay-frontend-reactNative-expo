@@ -23,8 +23,11 @@ export function useNotifications() {
     const { user: firebaseUser, userData: user } = useAuth();
     const router = useRouter();
     const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
-    const notificationListener = useRef<Notifications.EventSubscription>();
-    const responseListener = useRef<Notifications.EventSubscription>();
+    const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+
+    // Hook Expo ultra-fiable pour capter le clic sur une notif (app fermée ou en arrière-plan)
+    const lastNotificationResponse = Notifications.useLastNotificationResponse();
+    const handledResponseId = useRef<string | null>(null);
 
     const checkAndSyncToken = useCallback(async (token: string) => {
         try {
@@ -43,18 +46,27 @@ export function useNotifications() {
         }
     }, [user, firebaseUser]);
 
+    // Redirection au clic sur une notification (seulement quand le user est authentifié)
     useEffect(() => {
-        // 1. Gérer le clic quand l'application était COMPLÈTEMENT fermée (Cold Start)
-        Notifications.getLastNotificationResponseAsync().then(response => {
-            if (response) {
-                console.log('🚀 [NOTIFICATIONS] App lancée depuis une notification !');
-                // Délai pour laisser le temps à AppInitializer de faire sa redirection d'authentification vers /(tabs)
+        if (lastNotificationResponse && user) {
+            const currentResponseId = lastNotificationResponse.notification.request.identifier;
+
+            // Éviter de rediriger en boucle pour la même notification
+            if (handledResponseId.current !== currentResponseId) {
+                console.log('🚀 [NOTIFICATIONS] Action (Cold Start/Background) détectée !');
+                console.log('📦 [NOTIFICATIONS] Payload complet du clic:', JSON.stringify(lastNotificationResponse.notification.request.content, null, 2));
+
+                handledResponseId.current = currentResponseId;
+
+                // Petit délai pour que la navigation principale (Tabs) finisse de se monter post-auth
                 setTimeout(() => {
                     router.push('/(tabs)/notifications');
-                }, 1500);
+                }, 800);
             }
-        });
+        }
+    }, [lastNotificationResponse, user, router]);
 
+    useEffect(() => {
         registerForPushNotificationsAsync().then(token => {
             setExpoPushToken(token);
             if (token) {
@@ -62,29 +74,18 @@ export function useNotifications() {
             }
         });
 
-        // 2. Listener pour les notifications reçues quand l'app est OUVERTE
+        // Listener pour les notifications reçues quand l'app est OUVERTE au premier plan
         notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-            console.log('🔔 [NOTIFICATIONS] Reçue au premier plan:', notification);
-        });
-
-        // 3. Listener pour le clic quand l'app est en ARRIÈRE-PLAN (Background)
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-            console.log('👆 [NOTIFICATIONS] Action détectée (Arrière-plan):', response.notification.request.content.data);
-            // Petit délai pour assurer que le router est prêt
-            setTimeout(() => {
-                router.push('/(tabs)/notifications');
-            }, 500);
+            console.log('🔔 [NOTIFICATIONS] Reçue au premier plan !');
+            console.log('📦 [NOTIFICATIONS] Payload premier plan:', JSON.stringify(notification.request.content, null, 2));
         });
 
         return () => {
             if (notificationListener.current) {
                 notificationListener.current.remove();
             }
-            if (responseListener.current) {
-                responseListener.current.remove();
-            }
         };
-    }, [router, checkAndSyncToken]);
+    }, [checkAndSyncToken]);
 
     useEffect(() => {
         if (user && firebaseUser && expoPushToken) {
