@@ -30,7 +30,12 @@ export function useNotifications() {
     const notificationListener = useRef<Notifications.EventSubscription | null>(null);
 
     // Hook Expo ultra-fiable pour capter le clic sur une notif (app fermée ou en arrière-plan)
-    const lastNotificationResponse = Notifications.useLastNotificationResponse();
+    // Désactivé sur le web de manière sûre pour éviter les crashs de rendu
+    const lastNotificationResponse = (() => {
+        if (!IS_NOTIFICATIONS_ENABLED) return null;
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        return Notifications.useLastNotificationResponse();
+    })();
     const handledResponseId = useRef<string | null>(null);
 
     const checkAndSyncToken = useCallback(async (token: string) => {
@@ -76,6 +81,8 @@ export function useNotifications() {
     }, [lastNotificationResponse, user, router]);
 
     useEffect(() => {
+        if (!IS_NOTIFICATIONS_ENABLED) return;
+
         registerForPushNotificationsAsync().then(token => {
             setExpoPushToken(token);
             if (token) {
@@ -103,6 +110,8 @@ export function useNotifications() {
     }, [user, firebaseUser, expoPushToken, checkAndSyncToken]);
 
     async function registerForPushNotificationsAsync() {
+        if (!IS_NOTIFICATIONS_ENABLED) return undefined;
+
         let token;
 
         console.log('📱 [NOTIFICATIONS] Début de l\'enregistrement...');
