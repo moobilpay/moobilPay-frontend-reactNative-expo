@@ -6,8 +6,8 @@ export const Config = {
     // apiUrl: "http://192.168.137.206:3000",
     // apiUrl: "http://192.168.11.37:3000",
     // apiUrl: "http://192.168.1.122:3000",
-    // apiUrl: "http://172.20.10.4:3000",
-    apiUrl: "http://localhost:3000",
+    apiUrl: "http://192.168.137.81:3000",
+    // apiUrl: "http://localhost:3000",
 
     firebaseConfig: {
         apiKey: "AIzaSyDib0xP1_YnK6Ct4PpW0cGge3eN-iSHFYw",

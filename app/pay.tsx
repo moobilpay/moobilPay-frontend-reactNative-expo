@@ -40,6 +40,7 @@ import { AppLoader } from '../src/components/AppLoader';
 import { useAuth } from '../src/features/auth/context/AuthContext';
 import { Config } from '../src/api/config';
 import { NetflixPlan, PaymentMethod } from '../src/features/payment/types';
+import { useLanguage } from '../src/context/LanguageContext';
 
 // Composants d'étapes
 import StepPlanSelection from '../src/features/payment/components/StepPlanSelection';
@@ -70,6 +71,7 @@ function getStepNumber(page: number, activeStep: number): number {
 export default function ReabonnementScreen() {
   const router = useRouter();
   const { user, userData } = useAuth();
+  const { t } = useLanguage();
   // const socketRef = useRef<Socket | null>(null); // Supprimé
 
   // ── Navigation ──
@@ -323,7 +325,7 @@ export default function ReabonnementScreen() {
   // ─── Étape 1.5 → 2 (step 1) — API credentials ────────────────────────────
   const handleNetflixInfoContinue = async () => {
     if (!userFirstName.trim() || !userLastName.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer votre nom et prénom.');
+      Alert.alert(t('common_error'), t('pay_error_enter_name'));
       return;
     }
     setIsLoading(true);
@@ -345,13 +347,13 @@ export default function ReabonnementScreen() {
         setCurrentPage(2);
         setActiveStep(1);
       } else {
-        Alert.alert('Erreur', 'Impossible de récupérer/créer le compte Netflix.');
+        Alert.alert(t('common_error'), t('pay_error_fetch_netflix'));
       }
     } catch (err: any) {
       if (err.response?.status === 409) {
-        Alert.alert('Erreur', 'Ce nom et prénom est déjà utilisé. Veuillez en choisir un autre.');
+        Alert.alert(t('common_error'), t('pay_error_name_used'));
       } else {
-        Alert.alert('Erreur', 'Impossible de générer le compte Netflix. Vérifiez votre connexion.');
+        Alert.alert(t('common_error'), t('pay_error_generate_netflix'));
       }
     } finally {
       setIsLoading(false);
@@ -424,7 +426,7 @@ export default function ReabonnementScreen() {
         console.error('❌ [PAYMENT-ERROR] Échec initiation:', paymentRes.data);
         setShowPaymentModal(false);
         setIsInitializing(false);
-        Alert.alert('Erreur', 'Réponse invalide du serveur de paiement.');
+        Alert.alert(t('common_error'), t('pay_error_payment_server'));
         return;
       }
 
@@ -469,8 +471,8 @@ export default function ReabonnementScreen() {
       setShowPaymentModal(false);
       setIsInitializing(false);
       Alert.alert(
-        'Erreur',
-        err.response?.data?.message || "Erreur lors de l'initialisation du paiement."
+        t('common_error'),
+        err.response?.data?.message || t('pay_error_payment_init')
       );
     }
   };
@@ -489,7 +491,7 @@ export default function ReabonnementScreen() {
         setTimeout(() => setCurrentPage(6), 1500);
       }, 2000);
     } catch {
-      Alert.alert('Erreur', 'Erreur lors du traitement de la carte.');
+      Alert.alert(t('common_error'), t('pay_error_card_processing'));
     } finally {
       setIsLoading(false);
     }
@@ -503,7 +505,7 @@ export default function ReabonnementScreen() {
       setVerificationStep(1);
       setCurrentPage(5);
     } catch {
-      Alert.alert('Erreur', 'Erreur PayPal.');
+      Alert.alert(t('common_error'), t('pay_error_paypal'));
     } finally {
       setIsLoading(false);
     }
@@ -625,8 +627,8 @@ export default function ReabonnementScreen() {
 
       {/* Header avec action Home */}
       <PageHeader
-        title="Réabonnement"
-        subtitle="Choisissez votre plan Netflix"
+        title={t('pay_title')}
+        subtitle={t('pay_subtitle')}
         icon="play-circle"
         variant="glass"
         rightElement={
@@ -672,8 +674,8 @@ export default function ReabonnementScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  body: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#fff', overflow: 'hidden' as any },
+  body: { flex: 1, overflow: 'hidden' as any },
   // ── Header Action ──
   homeHeaderBtn: {
     width: 44,

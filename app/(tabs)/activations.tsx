@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PageHeader } from '../../src/components/PageHeader';
 import axios from 'axios';
@@ -7,9 +7,13 @@ import { useAuth } from '../../src/features/auth/context/AuthContext';
 import { Config } from '../../src/api/config';
 import { storage } from '../../src/utils/storage';
 import { usePaymentSocket } from '../../src/features/payment/hooks/usePaymentSocket';
+import { useTheme } from '../../src/context/ThemeContext';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 export default function ActivationsScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const { t, language } = useLanguage();
   const [activations, setActivations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,15 +77,19 @@ export default function ActivationsScreen() {
   const formatDate = (dateString: string) => {
     if (!dateString) return '...';
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'active':
-      case 'activated': return 'ACTIVÉ';
-      case 'expired': return 'EXPIRÉ';
-      default: return 'EN ATTENTE';
+      case 'activated': return t('activations_active').toUpperCase();
+      case 'expired': return t('activations_expired').toUpperCase();
+      default: return t('common_pending').toUpperCase();
     }
   };
 
@@ -95,13 +103,13 @@ export default function ActivationsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <PageHeader 
-        title="Mes Activations" 
+        title={t('activations_title')} 
         amount={`${stats.totalSpent.toLocaleString()} XAF`}
         icon="sync-circle" 
         variant="premium"
-        totalStats={{ value: stats.total.toString(), label: "TOTAL" }}
+        totalStats={{ value: stats.total.toString(), label: t('common_total') }}
       />
       
       <ScrollView 
@@ -112,61 +120,61 @@ export default function ActivationsScreen() {
       >
         {/* Section Aperçu */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>APERÇU</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('common_overview').toUpperCase()}</Text>
         </View>
 
         <View style={styles.statsGrid}>
-          <View style={styles.statBox}>
+          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.statIconWrapper, { backgroundColor: '#10b981' }]}>
               <Ionicons name="checkmark-circle" size={18} color="#fff" />
             </View>
             <View style={styles.statInfo}>
-              <Text style={styles.statValueLarge}>{stats.active}</Text>
-              <Text style={styles.statLabelSmall}>ACTIVÉ</Text>
+              <Text style={[styles.statValueLarge, { color: colors.text }]}>{stats.active}</Text>
+              <Text style={[styles.statLabelSmall, { color: colors.textSecondary }]}>{t('activations_active').toUpperCase()}</Text>
             </View>
           </View>
 
-          <View style={styles.statBox}>
+          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.statIconWrapper, { backgroundColor: '#f59e0b' }]}>
               <Ionicons name="hourglass" size={18} color="#fff" />
             </View>
             <View style={styles.statInfo}>
-              <Text style={styles.statValueLarge}>{stats.pending}</Text>
-              <Text style={styles.statLabelSmall}>EN ATTENTE</Text>
+              <Text style={[styles.statValueLarge, { color: colors.text }]}>{stats.pending}</Text>
+              <Text style={[styles.statLabelSmall, { color: colors.textSecondary }]}>{t('common_pending').toUpperCase()}</Text>
             </View>
           </View>
 
-          <View style={styles.statBox}>
+          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.statIconWrapper, { backgroundColor: '#ef4444' }]}>
               <Ionicons name="close-circle" size={18} color="#fff" />
             </View>
             <View style={styles.statInfo}>
-              <Text style={styles.statValueLarge}>{stats.expired}</Text>
-              <Text style={styles.statLabelSmall}>EXPIRÉ</Text>
+              <Text style={[styles.statValueLarge, { color: colors.text }]}>{stats.expired}</Text>
+              <Text style={[styles.statLabelSmall, { color: colors.textSecondary }]}>{t('activations_expired').toUpperCase()}</Text>
             </View>
           </View>
         </View>
 
         {/* Section Historique */}
         <View style={styles.historyHeader}>
-          <Text style={styles.sectionTitle}>HISTORIQUE</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('activations_history').toUpperCase()}</Text>
           <TouchableOpacity style={styles.filterBtn}>
-            <Ionicons name="funnel-outline" size={14} color="#64748b" />
-            <Text style={styles.filterBtnText}>Filtrer</Text>
+            <Ionicons name="funnel-outline" size={14} color={colors.textSecondary} />
+            <Text style={[styles.filterBtnText, { color: colors.textSecondary }]}>{t('common_filter')}</Text>
           </TouchableOpacity>
         </View>
 
         {loading && activations.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#dc2626" />
-            <Text style={styles.loadingText}>Chargement...</Text>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>{t('common_loading')}</Text>
           </View>
         ) : activations.length > 0 ? (
           <View style={styles.activationsList}>
             {activations.map((item) => (
               <TouchableOpacity 
                 key={item.id} 
-                style={styles.activationCard}
+                style={[styles.activationCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => setSelectedId(selectedId === item.id ? null : item.id)}
                 activeOpacity={0.7}
               >
@@ -179,14 +187,14 @@ export default function ActivationsScreen() {
                     />
                   </View>
                   <View style={styles.cardMainInfo}>
-                    <Text style={styles.cardPlanName}>{item.planNetflix || 'Plan Netflix'}</Text>
+                    <Text style={[styles.cardPlanName, { color: colors.text }]}>{item.planNetflix || 'Plan Netflix'}</Text>
                     <View style={styles.cardEmailRow}>
                       <Ionicons name="mail-outline" size={12} color="#64748b" />
-                      <Text style={styles.cardEmailText}>{item.email || '...'}</Text>
+                      <Text style={[styles.cardEmailText, { color: colors.textSecondary }]}>{item.email || '...'}</Text>
                     </View>
                   </View>
                   <View style={styles.cardValueGroup}>
-                    <Text style={styles.cardAmount}>{item.amount} F</Text>
+                    <Text style={[styles.cardAmount, { color: colors.text }]}>{item.amount} F</Text>
                     <Text style={[styles.cardStatusBadge, { color: getStatusColor(item.statut) }]}>
                       {getStatusLabel(item.statut)}
                     </Text>
@@ -194,21 +202,21 @@ export default function ActivationsScreen() {
                 </View>
 
                 {selectedId === item.id && (
-                  <View style={styles.cardDetails}>
+                  <View style={[styles.cardDetails, { borderTopColor: colors.border }]}>
                     <View style={styles.detailItem}>
                       <Ionicons name="key-outline" size={14} color="#dc2626" />
-                      <Text style={styles.detailLabel}>Mot de passe : </Text>
-                      <Text style={styles.detailValue}>{item.motDePasse || '••••••••'}</Text>
+                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Mot de passe : </Text>
+                      <Text style={[styles.detailValue, { color: colors.text }]}>{item.motDePasse || '••••••••'}</Text>
                     </View>
                     <View style={styles.detailItem}>
                       <Ionicons name="calendar-outline" size={14} color="#64748b" />
-                      <Text style={styles.detailLabel}>Date : </Text>
-                      <Text style={styles.detailValue}>{formatDate(item.dateCreation)}</Text>
+                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('common_date')} : </Text>
+                      <Text style={[styles.detailValue, { color: colors.text }]}>{formatDate(item.dateCreation)}</Text>
                     </View>
                     {(item.statut === 'active' || item.statut === 'activated') && (
                       <View style={styles.detailItem}>
                         <Ionicons name="flag-outline" size={14} color="#64748b" />
-                        <Text style={styles.detailLabel}>Expire le : </Text>
+                        <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('common_expires_on')} : </Text>
                         <Text style={[styles.detailValue, { color: '#dc2626', fontWeight: '700' }]}>
                           {formatDate(item.dateExpiration)}
                         </Text>
@@ -221,13 +229,11 @@ export default function ActivationsScreen() {
           </View>
         ) : (
           <View style={styles.emptyContainer}>
-            <View style={styles.iconCircle}>
+            <View style={[styles.iconCircle, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Ionicons name="list-outline" size={64} color="#e2e8f0" />
             </View>
-            <Text style={styles.emptyTitle}>Aucune activation</Text>
-            <Text style={styles.emptySubtitle}>
-              L'historique de vos activations de services et comptes apparaîtra ici.
-            </Text>
+            <Text style={[styles.emptyTitle, { color: colors.textMuted }]}>{t('activations_empty')}</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>{t('activations_empty_desc')}</Text>
           </View>
         )}
       </ScrollView>
@@ -239,6 +245,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
+    overflow: 'hidden',
   },
   scrollContent: {
     paddingTop: 20,
@@ -276,6 +283,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 16,
     gap: 10,
+    ...(Platform.OS === 'web' ? { overflow: 'hidden' as any, flexWrap: 'nowrap' as any } : {}),
   },
   statBox: {
     flex: 1,

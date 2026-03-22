@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PageHeader } from '../../src/components/PageHeader';
 import { useAuth } from '../../src/features/auth/context/AuthContext';
@@ -7,10 +7,11 @@ import { Config } from '../../src/api/config';
 import { storage } from '../../src/utils/storage';
 import { usePaymentSocket } from '../../src/features/payment/hooks/usePaymentSocket';
 import axios from 'axios';
+import { useTheme } from '../../src/context/ThemeContext';
+import { useLanguage } from '../../src/context/LanguageContext';
 
-const { width, height } = Dimensions.get('window');
-
-const NotificationCard = ({ title, body, createdAt, type, isRead, onPress }: any) => {
+const NotificationCard = ({ title, body, createdAt, type, isRead, onPress, language, t }: any) => {
+  const { colors } = useTheme();
   const getIcon = () => {
     switch (type) {
       case 'payment':
@@ -44,17 +45,17 @@ const NotificationCard = ({ title, body, createdAt, type, isRead, onPress }: any
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'À l\'instant';
+    if (diffMins < 1) return t('notifications_now');
     if (diffMins < 60) return `${diffMins} min`;
     if (diffHours < 24) return `${diffHours}h`;
-    if (diffDays === 1) return 'Hier';
+    if (diffDays === 1) return t('notifications_yesterday');
     if (diffDays < 7) return `${diffDays} j`;
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' });
   };
 
   return (
     <TouchableOpacity 
-      style={[styles.notifCard, !isRead && styles.unreadCard]}
+      style={[styles.notifCard, { backgroundColor: colors.card, borderColor: colors.border }, !isRead && styles.unreadCard]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -63,10 +64,10 @@ const NotificationCard = ({ title, body, createdAt, type, isRead, onPress }: any
       </View>
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>{title}</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{title}</Text>
           <Text style={styles.cardTime}>{getTimeAgo(createdAt)}</Text>
         </View>
-        <Text style={styles.cardBody} numberOfLines={2}>{body}</Text>
+        <Text style={[styles.cardBody, { color: colors.textSecondary }]} numberOfLines={2}>{body}</Text>
       </View>
       {!isRead && <View style={styles.unreadBadge} />}
     </TouchableOpacity>
@@ -75,6 +76,8 @@ const NotificationCard = ({ title, body, createdAt, type, isRead, onPress }: any
 
 export default function NotificationsScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const { t, language } = useLanguage();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -157,15 +160,15 @@ export default function NotificationsScreen() {
   const unreadCount = notifications.filter(n => !isRead(n)).length;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.backgroundBlobs}>
         <View style={[styles.blob, styles.blob1]} />
         <View style={[styles.blob, styles.blob2]} />
       </View>
 
       <PageHeader 
-        title="Mes Notifications" 
-        subtitle={unreadCount > 0 ? `${unreadCount} nouvelles` : "À jour"} 
+        title={t('notifications_title')} 
+        subtitle={unreadCount > 0 ? `${unreadCount} ${t('notifications_new_count')}` : t('notifications_up_to_date')} 
         icon="notifications" 
         variant="glass"
         rightElement={
@@ -192,6 +195,8 @@ export default function NotificationsScreen() {
               <NotificationCard 
                 key={notif.id} 
                 {...notif} 
+                language={language}
+                t={t}
                 isRead={isRead(notif)}
                 onPress={() => markAsRead(notif)}
               />
@@ -199,11 +204,11 @@ export default function NotificationsScreen() {
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <View style={styles.iconWrapper}>
+            <View style={[styles.iconWrapper, { backgroundColor: colors.card }]}>
               <Ionicons name="notifications-off-outline" size={64} color="#cbd5e1" />
             </View>
-            <Text style={styles.emptyTitle}>Plus rien ici !</Text>
-            <Text style={styles.emptySubtitle}>Vous n'avez pas de nouvelles notifications pour le moment.</Text>
+            <Text style={[styles.emptyTitle, { color: colors.textMuted }]}>{t('notifications_empty_title')}</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>{t('notifications_empty_desc')}</Text>
           </View>
         )}
       </ScrollView>
@@ -215,6 +220,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
+    overflow: 'hidden',
   },
   backgroundBlobs: {
     ...StyleSheet.absoluteFillObject,

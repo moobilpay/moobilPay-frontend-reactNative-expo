@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,12 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
-  Dimensions,
   StatusBar,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -21,12 +21,16 @@ import { useAuth } from "../../src/features/auth/context/AuthContext";
 import { Config } from "../../src/api/config";
 import { usePaymentSocket } from "../../src/features/payment/hooks/usePaymentSocket";
 import { storage } from "../../src/utils/storage";
-
-const { width } = Dimensions.get("window");
+import { useResponsiveWidth } from "../../src/utils/useResponsiveWidth";
+import { useTheme } from '../../src/context/ThemeContext';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { width } = useResponsiveWidth();
+  const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const [selectedFilter, setSelectedFilter] = useState("all");
 
   // ── États des données ──
@@ -103,41 +107,66 @@ export default function HomeScreen() {
   // ── Filtrage et Sliders ──
   const [activePlanIndex, setActivePlanIndex] = useState(0);
   const [activeServiceIndex, setActiveServiceIndex] = useState(0);
+  const serviceScrollRef = useRef<ScrollView>(null);
+  const serviceAutoScrollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeServiceIndexRef = useRef(0);
 
   // ── Données Statiques Originales (Streaming Services) ──
   const staticServices = [
     {
       id: 1,
-      title: "Netflix Premium",
-      subtitle: "Compte partagé • 4 écrans",
+      title: t('home_service_netflix_title'),
+      subtitle: t('home_service_netflix_subtitle'),
       price: "2000F",
-      status: "Actif",
+      status: t('home_status_active'),
       image: "https://images.unsplash.com/photo-1574375927938-d5a98e84875a?q=80&w=600",
       active: true
     },
     {
       id: 2,
-      title: "Disney+ Premium",
-      subtitle: "Famille • 4 profils",
+      title: t('home_service_disney_title'),
+      subtitle: t('home_service_disney_subtitle'),
       price: "1500F",
-      status: "Inactif",
+      status: t('home_status_inactive'),
       image: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=600",
       active: false
     },
     {
       id: 3,
-      title: "Spotify Premium",
-      subtitle: "Musique illimitée",
+      title: t('home_service_spotify_title'),
+      subtitle: t('home_service_spotify_subtitle'),
       price: "800F",
-      status: "Actif",
+      status: t('home_status_active'),
       image: "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?q=80&w=600",
       active: true
     }
   ];
 
+  const startServiceAutoScroll = useCallback(() => {
+    if (serviceAutoScrollTimer.current) clearInterval(serviceAutoScrollTimer.current);
+    serviceAutoScrollTimer.current = setInterval(() => {
+      const slideWidth = width - 40;
+      const nextIndex = (activeServiceIndexRef.current + 1) % staticServices.length;
+      activeServiceIndexRef.current = nextIndex;
+      setActiveServiceIndex(nextIndex);
+      serviceScrollRef.current?.scrollTo({ x: nextIndex * slideWidth, animated: true });
+    }, 4000);
+  }, [width]);
+
+  useEffect(() => {
+    activeServiceIndexRef.current = activeServiceIndex;
+  }, [activeServiceIndex]);
+
+  useEffect(() => {
+    startServiceAutoScroll();
+    return () => {
+      if (serviceAutoScrollTimer.current) clearInterval(serviceAutoScrollTimer.current);
+    };
+  }, [startServiceAutoScroll]);
+
   // ── Calculs dynamiques pour un plan donné ──
   const getPlanStats = (plan: any) => {
-    if (!plan) return { price: "0.00", daysLeft: 0, progress: 0, planName: "Plan", email: "" };
+    if (!plan) return { price: "0.00", daysLeft: 0, progress: 0, planName: t('home_service_plan_default'), email: "" };
 
     const now = new Date();
     const expiry = new Date(plan.dateExpiration);
@@ -155,15 +184,13 @@ export default function HomeScreen() {
       price: plan.amount?.toString() || "0.00",
       daysLeft,
       progress: 100 - progress,
-      planName: `Netflix ${plan.planNetflix || "Plan"}`,
-      email: plan.email || "Chargement..."
+      planName: `Netflix ${plan.planNetflix || t('home_service_plan_default')}`,
+      email: plan.email || t('home_service_loading_email')
     };
   };
 
-  const currentStats = getPlanStats(bestPlan);
-
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ─── CUSTOM HOME HEADER ─── */}
       <View style={styles.header}>
         <LinearGradient
@@ -172,13 +199,13 @@ export default function HomeScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.headerBg}
         />
-        <SafeAreaView style={styles.headerInner}>
+        <SafeAreaView edges={['top']} style={styles.headerInner}>
           <View style={styles.headerRow}>
             {/* Barre de recherche */}
             <View style={styles.searchBar}>
               <Ionicons name="search-outline" size={20} color="rgba(255,255,255,0.7)" />
               <TextInput
-                placeholder="Rechercher..."
+                placeholder={t('home_search')}
                 placeholderTextColor="rgba(255,255,255,0.5)"
                 style={styles.searchInput}
               />
@@ -208,7 +235,7 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView 
-        style={styles.content}
+        style={[styles.content, { backgroundColor: colors.background }]}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={
@@ -223,16 +250,17 @@ export default function HomeScreen() {
           contentContainerStyle={styles.filterRow}
         >
           {[
-            { id: "all", icon: "apps-outline", label: "Tous" },
-            { id: "streaming", icon: "play-circle-outline", label: "Streaming" },
-            { id: "music", icon: "musical-notes-outline", label: "Musique" },
-            { id: "gaming", icon: "game-controller-outline", label: "Gaming" },
-            { id: "productivity", icon: "briefcase-outline", label: "Productivité" },
+            { id: "all", icon: "apps-outline", label: t('home_filter_all') },
+            { id: "streaming", icon: "play-circle-outline", label: t('home_filter_streaming') },
+            { id: "music", icon: "musical-notes-outline", label: t('home_filter_music') },
+            { id: "gaming", icon: "game-controller-outline", label: t('home_filter_gaming') },
+            { id: "productivity", icon: "briefcase-outline", label: t('home_filter_productivity') },
           ].map((filter) => (
             <TouchableOpacity
               key={filter.id}
               style={[
                 styles.filterChip,
+                { backgroundColor: colors.card, borderColor: colors.border },
                 selectedFilter === filter.id && styles.filterChipActive,
               ]}
               onPress={() => setSelectedFilter(filter.id)}
@@ -271,14 +299,14 @@ export default function HomeScreen() {
               activations.map((act) => {
                 const stats = getPlanStats(act);
                 return (
-                  <View key={act.id} style={styles.statsCard}>
+                  <View key={act.id} style={[styles.statsCard, { width: width - 40, backgroundColor: colors.card }]}>
                     <View style={styles.cardTopRow}>
-                      <Text style={styles.cardEmail}>{stats.email}</Text>
+                      <Text style={[styles.cardEmail, { color: colors.textSecondary, backgroundColor: isDark ? colors.border : '#f1f5f9' }]}>{stats.email}</Text>
                       <Ionicons name="flash-sharp" size={14} color="#dc2626" />
                     </View>
 
                     <View style={styles.statsHeader}>
-                      <Text style={styles.statsPrice}>
+                      <Text style={[styles.statsPrice, { color: colors.text }]}>
                         <Text style={{ fontSize: 18 }}>$</Text>
                         {stats.price}
                       </Text>
@@ -286,12 +314,12 @@ export default function HomeScreen() {
                     </View>
                     
                     <View style={styles.statsLabels}>
-                      <Text style={styles.statsSub}>Jours restants</Text>
-                      <Text style={styles.statsSub}>Jours</Text>
+                      <Text style={styles.statsSub}>{t('home_days_left')}</Text>
+                      <Text style={styles.statsSub}>{t('home_days')}</Text>
                     </View>
 
                     <View style={styles.progressContainer}>
-                      <View style={styles.progressTrack}>
+                      <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
                         <LinearGradient
                           colors={["#dc2626", "#ef4444", "#f87171"]}
                           start={{ x: 0, y: 0 }}
@@ -305,28 +333,28 @@ export default function HomeScreen() {
                     </View>
 
                     <View style={styles.planInfo}>
-                      <Text style={styles.planLabel}>Plan: {stats.planName}</Text>
-                      <Text style={styles.planDuration}>1 mois</Text>
+                      <Text style={[styles.planLabel, { color: colors.textSecondary }]}>{t('home_plan_label')}: {stats.planName}</Text>
+                      <Text style={[styles.planDuration, { color: colors.textSecondary }]}>{t('home_plan_duration')}</Text>
                     </View>
 
                     <View style={styles.buttonRow}>
                       <TouchableOpacity style={styles.resubscribeBtn} onPress={() => router.push('/pay')}>
                         <Ionicons name="flash-sharp" size={16} color="#fff" />
-                        <Text style={styles.btnText}>Réabonner</Text>
+                        <Text style={styles.btnText}>{t('home_resubscribe')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.unsubscribeBtn} onPress={() => router.push('/pay')}>
                         <Ionicons name="add-circle-outline" size={18} color="#ef4444" />
-                        <Text style={styles.btnTextOutline}>Ajouter</Text>
+                        <Text style={styles.btnTextOutline}>{t('home_add')}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                 );
               })
             ) : (
-              <View style={[styles.statsCard, { opacity: 0.6 }]}>
-                <Text style={styles.noPlanMessage}>Aucun plan actif pour le moment</Text>
+              <View style={[styles.statsCard, { opacity: 0.6, width: width - 40, backgroundColor: colors.card }]}>
+                <Text style={styles.noPlanMessage}>{t('home_no_active_plan')}</Text>
                 <TouchableOpacity style={styles.resubscribeBtn} onPress={() => router.push('/pay')}>
-                  <Text style={styles.btnText}>Découvrir les plans</Text>
+                  <Text style={styles.btnText}>{t('home_discover_plans')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -342,32 +370,42 @@ export default function HomeScreen() {
         </View>
 
         {/* Séparateur */}
-        <View style={styles.subtleSeparator} />
+        <View style={[styles.subtleSeparator, { backgroundColor: colors.border }]} />
 
         {/* Section Services & Streaming */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <Ionicons name="play-circle" size={24} color="#dc2626" />
-            <Text style={styles.sectionTitle}>Services & Streaming</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('home_services_title')}</Text>
           </View>
-          <Text style={styles.sectionSubtitle}>Gérez vos abonnements et accédez à vos services</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{t('home_services_desc')}</Text>
         </View>
 
-        {/* Slider des services & Streaming (Fidèle à l'original) */}
+        {/* Slider des services & Streaming (Auto-scroll) */}
         <View style={styles.servicesSliderWrapper}>
           <ScrollView
+            ref={serviceScrollRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onScroll={(e) => {
               const x = e.nativeEvent.contentOffset.x;
-              const index = Math.round(x / (width - 40));
-              setActiveServiceIndex(index);
+              const slideWidth = width - 40;
+              const index = Math.round(x / slideWidth);
+              if (index !== activeServiceIndex) setActiveServiceIndex(index);
             }}
+            onTouchStart={() => {
+              if (serviceAutoScrollTimer.current) clearInterval(serviceAutoScrollTimer.current);
+            }}
+            onTouchEnd={() => startServiceAutoScroll()}
+            onScrollBeginDrag={() => {
+              if (serviceAutoScrollTimer.current) clearInterval(serviceAutoScrollTimer.current);
+            }}
+            onScrollEndDrag={() => startServiceAutoScroll()}
             scrollEventThrottle={16}
           >
             {staticServices.map((service) => (
-              <TouchableOpacity key={service.id} style={styles.serviceSlide} onPress={() => router.push('/pay')}>
+              <TouchableOpacity key={service.id} style={[styles.serviceSlide, { width: width - 40 }]} onPress={() => router.push('/pay')}>
                 <Image source={{ uri: service.image }} style={styles.slideImage} />
                 <LinearGradient
                   colors={["transparent", "rgba(0,0,0,0.9)"]}
@@ -400,35 +438,35 @@ export default function HomeScreen() {
         {/* Actions rapides */}
         <View style={styles.actionsGrid}>
           {[
-            { id: "accounts", icon: "people-outline", label: "Comptes" },
-            { id: "help", icon: "help-circle-outline", label: "Aide" },
-            { id: "news", icon: "film-outline", label: "Actus film" },
-            { id: "share", icon: "share-social-outline", label: "Partager" },
+            { id: "accounts", icon: "people-outline", label: t('home_accounts'), route: "/accounts" },
+            { id: "help", icon: "help-circle-outline", label: t('home_help'), route: "/help" },
+            { id: "news", icon: "film-outline", label: t('home_news'), route: "/news" },
+            { id: "share", icon: "share-social-outline", label: t('home_share'), route: "/share" },
           ].map((item) => (
-            <TouchableOpacity key={item.id} style={styles.actionCard}>
-              <View style={styles.actionCardIcon}>
+            <TouchableOpacity key={item.id} style={styles.actionCard} onPress={() => router.push(item.route as any)}>
+              <View style={[styles.actionCardIcon, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Ionicons name={item.icon as any} size={22} color="#dc2626" />
               </View>
-              <Text style={styles.actionCardLabel}>{item.label}</Text>
+              <Text style={[styles.actionCardLabel, { color: colors.textSecondary }]}>{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Séparateur */}
-        <View style={styles.subtleSeparator} />
+        <View style={[styles.subtleSeparator, { backgroundColor: colors.border }]} />
 
         {/* Section Découvrir & Divertissement */}
         <View style={styles.discoverSection}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <Ionicons name="sparkles" size={24} color="#dc2626" />
-              <Text style={styles.sectionTitle}>Découvrir & Divertissement</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('home_discover')}</Text>
             </View>
-            <Text style={styles.sectionSubtitle}>Explorez nos services de divertissement et plus encore</Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{t('home_discover_desc')}</Text>
           </View>
 
           <View style={styles.discoverGrid}>
-            <TouchableOpacity style={styles.discoverCard}>
+            <TouchableOpacity style={[styles.discoverCard, { width: (width - 40) / 2 - 6 }]}>
               <LinearGradient colors={["#dc2626", "#ef4444"]} style={styles.cardInternal}>
                 <View style={styles.cardHeader}>
                   <Ionicons name="film-outline" size={28} color="#fff" />
@@ -437,13 +475,13 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <View>
-                  <Text style={styles.discoverCardTitle}>Cinéma</Text>
-                  <Text style={styles.discoverCardDesc}>Films & séries</Text>
+                  <Text style={styles.discoverCardTitle}>{t('home_cinema')}</Text>
+                  <Text style={styles.discoverCardDesc}>{t('home_cinema_desc')}</Text>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.discoverCard}>
+            <TouchableOpacity style={[styles.discoverCard, { width: (width - 40) / 2 - 6 }]}>
               <LinearGradient colors={["#7c3aed", "#a855f7"]} style={styles.cardInternal}>
                 <View style={styles.cardHeader}>
                   <Ionicons name="game-controller-outline" size={28} color="#fff" />
@@ -452,13 +490,13 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <View>
-                  <Text style={styles.discoverCardTitle}>Gaming</Text>
-                  <Text style={styles.discoverCardDesc}>Jeux & consoles</Text>
+                  <Text style={styles.discoverCardTitle}>{t('home_gaming')}</Text>
+                  <Text style={styles.discoverCardDesc}>{t('home_gaming_desc')}</Text>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.discoverCard}>
+            <TouchableOpacity style={[styles.discoverCard, { width: (width - 40) / 2 - 6 }]}>
               <LinearGradient colors={["#059669", "#10b981"]} style={styles.cardInternal}>
                 <View style={styles.cardHeader}>
                   <Ionicons name="bag-outline" size={28} color="#fff" />
@@ -467,13 +505,13 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <View>
-                  <Text style={styles.discoverCardTitle}>Shopping</Text>
-                  <Text style={styles.discoverCardDesc}>Achats en ligne</Text>
+                  <Text style={styles.discoverCardTitle}>{t('home_shopping')}</Text>
+                  <Text style={styles.discoverCardDesc}>{t('home_shopping_desc')}</Text>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.discoverCard}>
+            <TouchableOpacity style={[styles.discoverCard, { width: (width - 40) / 2 - 6 }]}>
               <LinearGradient colors={["#ea580c", "#f97316"]} style={styles.cardInternal}>
                 <View style={styles.cardHeader}>
                   <Ionicons name="people-outline" size={28} color="#fff" />
@@ -482,8 +520,8 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <View>
-                  <Text style={styles.discoverCardTitle}>Social</Text>
-                  <Text style={styles.discoverCardDesc}>Réseaux sociaux</Text>
+                  <Text style={styles.discoverCardTitle}>{t('home_social')}</Text>
+                  <Text style={styles.discoverCardDesc}>{t('home_social_desc')}</Text>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
@@ -500,25 +538,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
+    ...(Platform.OS === 'web' ? { overflow: 'hidden' as any, maxWidth: '100%' as any } : {}),
   },
   header: {
-    height: 125,
     position: 'relative',
     zIndex: 10,
+    overflow: 'hidden',
   },
   headerBg: {
     ...StyleSheet.absoluteFillObject,
   },
   headerInner: {
-    flex: 1,
     paddingHorizontal: 20,
-    justifyContent: 'center',
+    paddingBottom: 20,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: Platform.select({ android: 15, web: 10, default: 10 }),
   },
   searchBar: {
     flex: 1,
@@ -527,7 +565,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     height: 46,
     borderRadius: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     marginRight: 12,
   },
   searchInput: {
@@ -548,6 +586,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
   badge: {
     position: 'absolute',
@@ -575,6 +614,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     backgroundColor: '#f8fafc',
+    ...(Platform.OS === 'web' ? { overflowX: 'hidden' as any } : {}),
   },
   filterSection: {
     marginVertical: 20,
@@ -613,7 +653,6 @@ const styles = StyleSheet.create({
   },
   statsCard: {
     backgroundColor: '#fff',
-    width: width - 40,
     marginHorizontal: 0,
     padding: 24,
     borderRadius: 24,
@@ -626,6 +665,7 @@ const styles = StyleSheet.create({
   planSliderContainer: {
     marginHorizontal: 20,
     alignItems: 'center',
+    overflow: 'hidden',
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -801,9 +841,9 @@ const styles = StyleSheet.create({
   servicesSliderWrapper: {
     marginHorizontal: 20,
     alignItems: 'center',
+    overflow: 'hidden',
   },
   serviceSlide: {
-    width: width - 40,
     height: 180,
     borderRadius: 20,
     overflow: 'hidden',
@@ -817,6 +857,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+    ...(Platform.OS === 'web' ? { objectFit: 'cover' as any } : {}),
   },
   slideOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -888,9 +929,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginTop: 20,
     justifyContent: 'space-between',
+    ...(Platform.OS === 'web' ? { overflow: 'hidden' as any, flexWrap: 'nowrap' as any } : {}),
   },
   actionCard: {
-    width: (width - 40) / 4 - 8,
+    flex: 1,
     alignItems: 'center',
     gap: 6,
   },
@@ -924,9 +966,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     paddingHorizontal: 14,
     gap: 12,
+    ...(Platform.OS === 'web' ? { overflow: 'hidden' as any } : {}),
   },
   discoverCard: {
-    width: (width - 40) / 2 - 6,
     height: 110,
     borderRadius: 16,
     overflow: 'hidden',

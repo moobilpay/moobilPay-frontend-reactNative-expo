@@ -8,12 +8,15 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PageHeader } from '../../src/components/PageHeader';
 import { useAuth } from '../../src/features/auth/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { AppLoader } from '../../src/components/AppLoader';
+import { useLanguage } from '../../src/context/LanguageContext';
+import { useTheme } from '../../src/context/ThemeContext';
 
 interface SettingItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -37,63 +40,67 @@ const SettingItem: React.FC<SettingItemProps> = ({
   onValueChange,
   rightText,
   onPress,
-}) => (
-  <TouchableOpacity
-    style={styles.item}
-    activeOpacity={type !== 'toggle' ? 0.6 : 1}
-    onPress={onPress}
-  >
-    <View style={[styles.iconWrapper, { backgroundColor: color }]}>
-      <Ionicons name={icon} size={22} color="#fff" />
-    </View>
-    <View style={styles.itemContent}>
-      <Text style={[styles.itemLabel, type === 'danger' && styles.dangerText]}>{label}</Text>
-      <Text style={styles.itemDescription}>{description}</Text>
-    </View>
-    {type === 'toggle' && (
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: '#e2e8f0', true: '#dc2626' }}
-        thumbColor={Platform.OS === 'ios' ? '#fff' : value ? '#fff' : '#f4f3f4'}
-      />
-    )}
-    {type === 'arrow' && <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />}
-    {type === 'danger' && <Ionicons name="log-out-outline" size={20} color="#ef4444" />}
-    {type === 'select' && (
-      <View style={styles.selectRow}>
-        <Text style={styles.selectText}>{rightText}</Text>
-        <Ionicons name="chevron-down" size={16} color="#64748b" />
+}) => {
+  const { colors } = useTheme();
+  return (
+    <TouchableOpacity
+      style={styles.item}
+      activeOpacity={type !== 'toggle' ? 0.6 : 1}
+      onPress={onPress}
+    >
+      <View style={[styles.iconWrapper, { backgroundColor: color }]}>
+        <Ionicons name={icon} size={22} color="#fff" />
       </View>
-    )}
-  </TouchableOpacity>
-);
+      <View style={styles.itemContent}>
+        <Text style={[styles.itemLabel, { color: colors.text }, type === 'danger' && styles.dangerText]}>{label}</Text>
+        <Text style={[styles.itemDescription, { color: colors.textSecondary }]}>{description}</Text>
+      </View>
+      {type === 'toggle' && (
+        <Switch
+          value={value}
+          onValueChange={onValueChange}
+          trackColor={{ false: '#e2e8f0', true: '#dc2626' }}
+          thumbColor={Platform.OS === 'ios' ? '#fff' : value ? '#fff' : '#f4f3f4'}
+        />
+      )}
+      {type === 'arrow' && <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
+      {type === 'danger' && <Ionicons name="log-out-outline" size={20} color="#ef4444" />}
+      {type === 'select' && (
+        <View style={styles.selectRow}>
+          <Text style={[styles.selectText, { color: colors.textSecondary }]}>{rightText}</Text>
+          <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
 
 export default function SettingsScreen() {
   const { logout } = useAuth();
   const router = useRouter();
-  const [darkMode, setDarkMode] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
+  const { isDark, toggleTheme, colors } = useTheme();
   const [notifications, setNotifications] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showLangModal, setShowLangModal] = useState(false);
 
   const handleLogout = async () => {
     Alert.alert(
-      "Déconnexion",
-      "Êtes-vous sûr de vouloir vous déconnecter ?",
+      t('settings_logout'),
+      t('settings_logout_confirm'),
       [
-        { text: "Annuler", style: "cancel" },
+        { text: t('settings_logout_cancel'), style: "cancel" },
         { 
-          text: "Déconnexion", 
+          text: t('settings_logout'), 
           style: "destructive",
           onPress: async () => {
             setIsLoggingOut(true);
             try {
-              // Simuler un petit délai pour le loader
               await new Promise(resolve => setTimeout(resolve, 1500));
               await logout();
               router.replace('/login');
             } catch (error) {
-              Alert.alert("Erreur", "Impossible de se déconnecter.");
+              Alert.alert(t('common_error'), t('settings_logout_error'));
             } finally {
               setIsLoggingOut(false);
             }
@@ -104,15 +111,61 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <AppLoader visible={isLoggingOut} message="Déconnexion en cours..." />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <AppLoader visible={isLoggingOut} message={t('settings_logging_out')} />
       
       <PageHeader 
-        title="Paramètres" 
-        subtitle="Gérez vos préférences et votre compte" 
+        title={t('settings_title')} 
+        subtitle={t('settings_subtitle')} 
         icon="settings" 
         variant="premium"
       />
+
+      {/* Language Picker Modal */}
+      <Modal
+        visible={showLangModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLangModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLangModal(false)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('settings_language')}</Text>
+            {[
+              { key: 'fr' as const, label: t('lang_fr') },
+              { key: 'en' as const, label: t('lang_en') },
+            ].map((lang) => (
+              <TouchableOpacity
+                key={lang.key}
+                style={[
+                  styles.modalOption,
+                  { borderColor: colors.border },
+                  language === lang.key && styles.modalOptionActive,
+                ]}
+                onPress={() => {
+                  setLanguage(lang.key);
+                  setShowLangModal(false);
+                }}
+              >
+                <Text style={[
+                  styles.modalOptionText,
+                  { color: colors.text },
+                  language === lang.key && styles.modalOptionTextActive,
+                ]}>
+                  {lang.label}
+                </Text>
+                {language === lang.key && (
+                  <Ionicons name="checkmark-circle" size={22} color="#dc2626" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <ScrollView 
         keyboardShouldPersistTaps="handled"
@@ -120,37 +173,38 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>GÉNÉRAL</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings_general')}</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingItem
               icon="language-outline"
               color="#3b82f6"
-              label="Langue"
-              description="Choisissez votre langue d'affichage"
+              label={t('settings_language')}
+              description={t('settings_language_desc')}
               type="select"
-              rightText="🇫🇷 Français"
+              rightText={language === 'fr' ? t('lang_fr') : t('lang_en')}
+              onPress={() => setShowLangModal(true)}
             />
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: colors.separator }]} />
             <SettingItem
               icon="moon-outline"
               color="#8b5cf6"
-              label="Mode Sombre"
-              description="Réduisez la fatigue oculaire"
+              label={t('settings_dark_mode')}
+              description={t('settings_dark_mode_desc')}
               type="toggle"
-              value={darkMode}
-              onValueChange={setDarkMode}
+              value={isDark}
+              onValueChange={toggleTheme}
             />
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>NOTIFICATIONS</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings_notifications_section')}</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingItem
               icon="notifications-outline"
               color="#ef4444"
-              label="Push Notifications"
-              description="Recevez des alertes en temps réel"
+              label={t('settings_push')}
+              description={t('settings_push_desc')}
               type="toggle"
               value={notifications}
               onValueChange={setNotifications}
@@ -159,21 +213,21 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>SÉCURITÉ</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings_security')}</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingItem
               icon="lock-closed-outline"
               color="#10b981"
-              label="Mot de passe"
-              description="Changez votre mot de passe"
+              label={t('settings_password')}
+              description={t('settings_password_desc')}
               type="arrow"
             />
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: colors.separator }]} />
             <SettingItem
               icon="finger-print-outline"
               color="#06b6d4"
-              label="Biométrie"
-              description="Utilisez TouchID ou FaceID"
+              label={t('settings_biometrics')}
+              description={t('settings_biometrics_desc')}
               type="toggle"
               value={true}
             />
@@ -181,35 +235,37 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>MON COMPTE</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings_account')}</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingItem
               icon="person-outline"
               color="#3b82f6"
-              label="Profil"
-              description="Gérez vos informations personnelles"
+              label={t('settings_profile')}
+              description={t('settings_profile_desc')}
               type="arrow"
+              onPress={() => router.push('/profile')}
             />
-            <View style={styles.separator} />
+            <View style={[styles.separator, { backgroundColor: colors.separator }]} />
             <SettingItem
               icon="card-outline"
               color="#06b6d4"
-              label="Abonnement"
-              description="Consultez votre plan actuel"
+              label={t('settings_subscription')}
+              description={t('settings_subscription_desc')}
               type="arrow"
-              rightText="Premium"
+              rightText={t('common_premium')}
+              onPress={() => router.push('/accounts')}
             />
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>SESSION</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings_session')}</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SettingItem
               icon="log-out-outline"
               color="#ef4444"
-              label="Déconnexion"
-              description="Quitter votre session actuelle"
+              label={t('settings_logout')}
+              description={t('settings_logout_desc')}
               type="danger"
               onPress={handleLogout}
             />
@@ -217,21 +273,21 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: '#ef4444' }]}>ZONE DE DANGER</Text>
-          <View style={[styles.card, { borderColor: 'rgba(239, 68, 68, 0.2)', borderWidth: 1 }]}>
+          <Text style={[styles.sectionTitle, { color: '#ef4444' }]}>{t('settings_danger_zone')}</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: 'rgba(239, 68, 68, 0.2)', borderWidth: 1 }]}>
             <SettingItem
               icon="trash-outline"
               color="#ef4444"
-              label="Supprimer le compte"
-              description="Cette action est irréversible"
+              label={t('settings_delete_account')}
+              description={t('settings_delete_account_desc')}
               type="arrow"
             />
           </View>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>MoobilPay v1.0.0</Text>
-          <Text style={styles.footerSubText}>© 2025 MoobilPay. Tous droits réservés.</Text>
+          <Text style={[styles.footerText, { color: colors.textMuted }]}>{t('settings_version')}</Text>
+          <Text style={[styles.footerSubText, { color: colors.textMuted }]}>{t('settings_copyright')}</Text>
         </View>
       </ScrollView>
     </View>
@@ -242,6 +298,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
+    overflow: 'hidden',
   },
   scrollContent: {
     paddingTop: 20,
@@ -329,5 +386,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#cbd5e1',
     marginTop: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  modalContent: {
+    width: '100%',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  modalOptionActive: {
+    borderColor: '#dc2626',
+    backgroundColor: 'rgba(220, 38, 38, 0.06)',
+  },
+  modalOptionText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalOptionTextActive: {
+    color: '#dc2626',
   },
 });

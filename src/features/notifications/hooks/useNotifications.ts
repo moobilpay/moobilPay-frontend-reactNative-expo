@@ -27,8 +27,8 @@ export function useNotifications() {
     const { user: firebaseUser, userData: user } = useAuth();
     const router = useRouter();
     const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
-    const notificationListener = useRef<Notifications.EventSubscription>();
-    const responseListener = useRef<Notifications.EventSubscription>();
+    const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+    const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
     const checkAndSyncToken = useCallback(async (token: string) => {
         try {

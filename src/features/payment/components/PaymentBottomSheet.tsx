@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Animated,
-  Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
   Modal,
   Platform,
@@ -22,8 +22,6 @@ import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SHEET_HEIGHT = SCREEN_HEIGHT * 0.82;
 const EXTRA_LOAD_DELAY = 3000;
 
 interface Props {
@@ -49,6 +47,8 @@ export default function PaymentBottomSheet({
   onFrameLoad,
   onUIValidated,
 }: Props) {
+  const { height: SCREEN_HEIGHT } = useWindowDimensions();
+  const SHEET_HEIGHT = SCREEN_HEIGHT * 0.82;
   const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const [isMounted, setIsMounted] = useState(false);
@@ -128,7 +128,7 @@ export default function PaymentBottomSheet({
         </TouchableWithoutFeedback>
 
         {/* Bottom Sheet */}
-        <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
+        <Animated.View style={[styles.sheet, { height: SHEET_HEIGHT, transform: [{ translateY: slideAnim }] }]}>
           <View style={styles.notch} />
 
           {!isInitializing && !isCancelling && (
@@ -253,13 +253,13 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: 'flex-end',
+    ...(Platform.OS === 'web' ? { maxWidth: 500, alignSelf: 'center' as const, width: '100%' as any } : {}),
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   sheet: {
-    height: SHEET_HEIGHT,
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

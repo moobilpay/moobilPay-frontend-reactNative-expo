@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  Dimensions,
   Platform,
   Alert,
   TextInput,
@@ -19,12 +18,12 @@ import { handleGoogleSignIn } from "../../src/features/auth/services/googleAuthS
 import { handleEmailAuth } from "../../src/features/auth/services/emailAuthService";
 import { AppLoader } from "../../src/components/AppLoader";
 import { useRouter } from "expo-router";
-
-const { width, height } = Dimensions.get("window");
+import { useResponsiveWidth } from "../../src/utils/useResponsiveWidth";
 
 const LoginScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { width, windowHeight: height } = useResponsiveWidth();
 
   const heroBounce = useRef(new Animated.Value(-20)).current;
   const heroOpacity = useRef(new Animated.Value(0)).current;
@@ -97,8 +96,8 @@ const LoginScreen: React.FC = () => {
       />
 
       {/* Accent géométrique */}
-      <View style={[styles.arcContainer, { top: -height * 0.12 + insets.top }]}>
-        <View style={styles.arc} />
+      <View style={[styles.arcContainer, { top: -height * 0.12 + insets.top, right: -width * 0.35 }]}>
+        <View style={[styles.arc, { width: width * 0.85, height: width * 0.85, borderRadius: width * 0.425 }]} />
       </View>
 
       {/* Rendu dynamique : Si e-mail mode, on cache le hero pour plus de place */}
@@ -275,18 +274,16 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#0a0a12",
+    overflow: "hidden",
   },
 
   // Arc décoratif
   arcContainer: {
     position: "absolute",
-    right: -width * 0.35,
     zIndex: 0,
+    ...(Platform.OS === 'web' ? { overflow: 'hidden' as any } : {}),
   },
   arc: {
-    width: width * 0.85,
-    height: width * 0.85,
-    borderRadius: width * 0.425,
     borderWidth: 1,
     borderColor: "rgba(196, 26, 26, 0.18)",
     backgroundColor: "rgba(196, 26, 26, 0.06)",
@@ -405,6 +402,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.07)",
     zIndex: 10,
+    ...(Platform.OS === 'web' ? { maxWidth: '100%' as any, overflow: 'hidden' as any } : {}),
   },
   handle: {
     width: 36,

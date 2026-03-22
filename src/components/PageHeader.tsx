@@ -1,10 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const { width } = Dimensions.get('window');
+import { useTheme } from '../context/ThemeContext';
 
 interface PageHeaderProps {
   title: string;
@@ -28,6 +27,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   totalStats,
   rightElement 
 }) => {
+  const { colors } = useTheme();
+
   if (variant === 'premium') {
     return (
       <View style={styles.premiumContainer}>
@@ -41,7 +42,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
           <View style={styles.premiumContent}>
             <View style={styles.premiumHeaderRow}>
               <View style={styles.premiumIconContainer}>
-                <Ionicons name={icon} size={32} color="#fff" />
+                <Ionicons name={icon} size={24} color="#fff" />
               </View>
               <View style={styles.premiumInfo}>
                 <Text style={styles.premiumTitle}>{title}</Text>
@@ -76,7 +77,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         <SafeAreaView edges={['top']} style={styles.glassSafe}>
           <View style={styles.glassContent}>
             <View style={styles.glassIconMain}>
-              <Ionicons name={icon} size={32} color="#fff" />
+              <Ionicons name={icon} size={24} color="#fff" />
             </View>
             <View style={styles.glassTitles}>
               <Text style={styles.glassTitle}>{title}</Text>
@@ -94,7 +95,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   }
 
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.card}>
           <View style={styles.content}>
@@ -102,8 +103,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
               <Ionicons name={icon} size={24} color="#dc2626" />
             </View>
             <View style={styles.info}>
-              <Text style={styles.title}>{title}</Text>
-              {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+              <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+              {subtitle && <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
             </View>
           </View>
           {rightElement && (
@@ -126,14 +127,14 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   safeArea: {
-    paddingBottom: 16,
+    paddingBottom: 20,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginTop: Platform.OS === 'android' ? 10 : 0,
+    marginTop: Platform.select({ android: 15, web: 10, default: 0 }),
   },
   content: {
     flexDirection: 'row',
@@ -170,16 +171,17 @@ const styles = StyleSheet.create({
   premiumContainer: {
     overflow: 'hidden',
     zIndex: 10,
+    ...(Platform.OS === 'web' ? { maxWidth: '100%' as any } : {}),
   },
   premiumBg: {
     ...StyleSheet.absoluteFillObject,
   },
   premiumSafe: {
-    paddingBottom: 25,
+    paddingBottom: 20,
   },
   premiumContent: {
     paddingHorizontal: 20,
-    marginTop: Platform.OS === 'android' ? 20 : 10,
+    marginTop: Platform.select({ android: 15, web: 10, default: 10 }),
   },
   premiumHeaderRow: {
     flexDirection: 'row',
@@ -187,13 +189,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   premiumIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   premiumInfo: {
@@ -206,10 +208,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   premiumAmount: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
-    marginTop: 4,
+    marginTop: 2,
   },
   premiumSubtitle: {
     color: 'rgba(255, 255, 255, 0.8)',
@@ -221,7 +223,7 @@ const styles = StyleSheet.create({
   },
   totalValue: {
     color: 'white',
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '900',
   },
   totalLabel: {
@@ -235,27 +237,28 @@ const styles = StyleSheet.create({
   glassContainer: {
     overflow: 'hidden',
     zIndex: 10,
+    ...(Platform.OS === 'web' ? { maxWidth: '100%' as any } : {}),
   },
   glassBg: {
     ...StyleSheet.absoluteFillObject,
   },
   glassSafe: {
-    paddingBottom: 25,
+    paddingBottom: 20,
   },
   glassContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginTop: Platform.OS === 'android' ? 10 : 0,
+    marginTop: Platform.select({ android: 15, web: 10, default: 10 }),
   },
   glassIconMain: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   glassTitles: {
@@ -263,7 +266,7 @@ const styles = StyleSheet.create({
     marginLeft: 14,
   },
   glassTitle: {
-    fontSize: 19,
+    fontSize: 20,
     fontWeight: '700',
     color: '#ffffff',
   },

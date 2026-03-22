@@ -4,16 +4,14 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Animated,
   ScrollView,
+  Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const { width, height } = Dimensions.get("window");
 
 interface OnboardingScreenProps {
   onComplete: () => void;
@@ -266,6 +264,7 @@ const styles = StyleSheet.create({
     flex: 1,
     position: "relative",
     backgroundColor: "#0f0f23",
+    overflow: "hidden",
   },
   gradient: {
     position: "absolute",
@@ -283,6 +282,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     justifyContent: "space-between",
     zIndex: 1,
+    ...(Platform.OS === 'web' ? { overflow: 'hidden' as any, maxWidth: '100%' as any } : {}),
   },
   onboardingHeader: {
     display: "flex",
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   netflixCard: {
     width: 120,
     height: 80,
-    backgroundColor: "linear-gradient(135deg, #000000 0%, #1a1a1a 100%)",
+    backgroundColor: "#0a0a0a",
     borderRadius: 12,
     display: "flex",
     alignItems: "center",
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     right: -10,
     width: 30,
     height: 30,
-    backgroundColor: "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)",
+    backgroundColor: "#dc2626",
     borderRadius: 50,
     display: "flex",
     alignItems: "center",
@@ -430,10 +430,10 @@ const styles = StyleSheet.create({
     elevation: 15,
   },
   mtn: {
-    backgroundColor: "linear-gradient(135deg, #ffcc00 0%, #ff9900 100%)",
+    backgroundColor: "#ffcc00",
   },
   orange: {
-    backgroundColor: "linear-gradient(135deg, #ff6600 0%, #ff3300 100%)",
+    backgroundColor: "#ff6600",
   },
   cardLogo: {
     fontSize: 10,
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -20 }],
     width: 40,
     height: 40,
-    backgroundColor: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+    backgroundColor: "#22c55e",
     borderRadius: 50,
     display: "flex",
     alignItems: "center",
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   successCircle: {
     width: 80,
     height: 80,
-    backgroundColor: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+    backgroundColor: "#22c55e",
     borderRadius: 50,
     display: "flex",
     alignItems: "center",

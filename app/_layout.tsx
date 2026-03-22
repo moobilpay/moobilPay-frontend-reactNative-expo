@@ -1,6 +1,6 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/features/auth/context/AuthContext';
@@ -8,6 +8,8 @@ import { SocketProvider } from '../src/context/SocketContext';
 import * as SplashScreen from 'expo-splash-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNotifications } from '../src/features/notifications/hooks/useNotifications';
+import { LanguageProvider } from '../src/context/LanguageContext';
+import { ThemeProvider } from '../src/context/ThemeContext';
 
 // Empêche le splash screen de se cacher automatiquement
 SplashScreen.preventAutoHideAsync();
@@ -81,17 +83,37 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <SocketProvider>
-          <AppInitializer onSplashHidden={() => setSplashHidden(true)} />
-          <StatusBar 
-            style={splashHidden ? "light" : "dark"} 
-            translucent={true} 
-            backgroundColor="transparent" 
-          />
-          <Stack screenOptions={{ headerShown: false }} />
-        </SocketProvider>
-      </AuthProvider>
+      <View style={layoutStyles.webContainer}>
+        <LanguageProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <SocketProvider>
+                <AppInitializer onSplashHidden={() => setSplashHidden(true)} />
+                <StatusBar 
+                  style={splashHidden ? "light" : "dark"} 
+                  translucent={true} 
+                  backgroundColor="transparent" 
+                />
+                <Stack screenOptions={{ headerShown: false }} />
+              </SocketProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </LanguageProvider>
+      </View>
     </SafeAreaProvider>
   );
 }
+
+const layoutStyles = StyleSheet.create({
+  webContainer: {
+    flex: 1,
+    width: '100%',
+    ...(Platform.OS === 'web' ? {
+      maxWidth: 500,
+      alignSelf: 'center' as const,
+      overflowX: 'hidden' as const,
+      overflowY: 'auto' as const,
+      minHeight: '100vh' as any,
+    } : {}),
+  },
+});

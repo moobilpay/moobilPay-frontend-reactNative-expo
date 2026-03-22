@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PageHeader } from '../../src/components/PageHeader';
 import axios from 'axios';
@@ -7,10 +7,11 @@ import { useAuth } from '../../src/features/auth/context/AuthContext';
 import { Config } from '../../src/api/config';
 import { storage } from '../../src/utils/storage';
 import { usePaymentSocket } from '../../src/features/payment/hooks/usePaymentSocket';
-
-const { width } = Dimensions.get('window');
+import { useTheme } from '../../src/context/ThemeContext';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 const TransactionItem = ({ label, date, amount, status }: any) => {
+  const { colors } = useTheme();
   const isPositive = amount.toString().startsWith('+');
   const getIcon = () => {
     if (label.toLowerCase().includes('netflix')) return 'play-circle';
@@ -27,16 +28,16 @@ const TransactionItem = ({ label, date, amount, status }: any) => {
   };
 
   return (
-    <View style={styles.transactionRow}>
+    <View style={[styles.transactionRow, { borderBottomColor: colors.border }]}>
       <View style={[styles.iconWrapper, { backgroundColor: getColor() }]}>
         <Ionicons name={getIcon() as any} size={20} color="#fff" />
       </View>
       <View style={styles.transactionContent}>
-        <Text style={styles.transactionLabel}>{label}</Text>
-        <Text style={styles.transactionDescription}>{status} • {date}</Text>
+        <Text style={[styles.transactionLabel, { color: colors.text }]}>{label}</Text>
+        <Text style={[styles.transactionDescription, { color: colors.textSecondary }]}>{status} • {date}</Text>
       </View>
       <View style={styles.transactionValueGroup}>
-        <Text style={[styles.amountText, { color: isPositive ? '#22c55e' : '#1e293b' }]}>
+        <Text style={[styles.amountText, { color: isPositive ? '#22c55e' : colors.text }]}>
           {isPositive ? '' : '-'}{amount}F
         </Text>
       </View>
@@ -46,6 +47,8 @@ const TransactionItem = ({ label, date, amount, status }: any) => {
 
 export default function TransactionsScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const { t, language } = useLanguage();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [totalSpent, setTotalSpent] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -98,17 +101,17 @@ export default function TransactionsScreen() {
   const formatDate = (dateString: string) => {
     if (!dateString) return '...';
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+    return date.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: 'short' });
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <PageHeader 
-        title="Mes Transactions" 
+        title={t('transactions_title')} 
         amount={`${totalSpent.toLocaleString()} F`}
         icon="card" 
         variant="premium"
-        totalStats={{ value: transactions.length.toString(), label: "TOTAL" }}
+        totalStats={{ value: transactions.length.toString(), label: t('common_total') }}
       />
       
       <ScrollView 
@@ -120,47 +123,47 @@ export default function TransactionsScreen() {
       >
         {/* Section Aperçu */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>APERÇU</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('common_overview').toUpperCase()}</Text>
         </View>
 
         <View style={styles.statsGrid}>
-          <View style={styles.statBox}>
+          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.statIconWrapper, { backgroundColor: '#ef4444' }]}>
               <Ionicons name="wallet" size={18} color="#fff" />
             </View>
             <View style={styles.statInfo}>
-              <Text style={styles.statValueLarge}>{totalSpent.toLocaleString()}F</Text>
-              <Text style={styles.statLabelSmall}>DÉPENSÉ</Text>
+              <Text style={[styles.statValueLarge, { color: colors.text }]}>{totalSpent.toLocaleString()}F</Text>
+              <Text style={[styles.statLabelSmall, { color: colors.textSecondary }]}>{t('transactions_spent').toUpperCase()}</Text>
             </View>
           </View>
 
-          <View style={styles.statBox}>
+          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.statIconWrapper, { backgroundColor: '#3b82f6' }]}>
               <Ionicons name="trending-up" size={18} color="#fff" />
             </View>
             <View style={styles.statInfo}>
-              <Text style={styles.statValueLarge}>{transactions.length}</Text>
-              <Text style={styles.statLabelSmall}>TRANSAC.</Text>
+              <Text style={[styles.statValueLarge, { color: colors.text }]}>{transactions.length}</Text>
+              <Text style={[styles.statLabelSmall, { color: colors.textSecondary }]}>{t('transactions_short').toUpperCase()}</Text>
             </View>
           </View>
 
-          <View style={styles.statBox}>
+          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.statIconWrapper, { backgroundColor: '#10b981' }]}>
               <Ionicons name="leaf" size={18} color="#fff" />
             </View>
             <View style={styles.statInfo}>
-              <Text style={styles.statValueLarge}>2,300F</Text>
-              <Text style={styles.statLabelSmall}>ÉCO.</Text>
+              <Text style={[styles.statValueLarge, { color: colors.text }]}>2,300F</Text>
+              <Text style={[styles.statLabelSmall, { color: colors.textSecondary }]}>{t('transactions_saved').toUpperCase()}</Text>
             </View>
           </View>
         </View>
 
         {/* Section Récentes */}
         <View style={styles.recentHeader}>
-          <Text style={styles.sectionTitle}>RÉCENTES</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('common_recent').toUpperCase()}</Text>
           <TouchableOpacity style={styles.filterBtn}>
-            <Ionicons name="funnel-outline" size={14} color="#64748b" />
-            <Text style={styles.filterBtnText}>Filtrer</Text>
+            <Ionicons name="funnel-outline" size={14} color={colors.textSecondary} />
+            <Text style={[styles.filterBtnText, { color: colors.textSecondary }]}>{t('common_filter')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -169,12 +172,12 @@ export default function TransactionsScreen() {
             <ActivityIndicator size="large" color="#dc2626" />
           </View>
         ) : transactions.length > 0 ? (
-          <View style={styles.transactionsCard}>
+          <View style={[styles.transactionsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {transactions.map((item) => (
               <TransactionItem 
                 key={item.id}
-                label={item.reason || item.planName || 'Paiement'} 
-                status={item.status === 'success' ? 'Validé' : 'En attente'}
+                label={item.reason || item.planName || t('transactions_payment')} 
+                status={item.status === 'success' ? t('common_validated') : t('common_pending')}
                 date={formatDate(item.dateCreation)} 
                 amount={item.amount} 
               />
@@ -183,7 +186,7 @@ export default function TransactionsScreen() {
         ) : (
           <View style={styles.emptyContainer}>
             <Ionicons name="receipt-outline" size={64} color="#e2e8f0" />
-            <Text style={styles.emptyText}>Aucune transaction trouvée</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('transactions_empty')}</Text>
           </View>
         )}
       </ScrollView>
@@ -195,6 +198,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
+    overflow: 'hidden',
   },
   scrollContent: {
     paddingTop: 20,
@@ -232,6 +236,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 16,
     gap: 10,
+    ...(Platform.OS === 'web' ? { overflow: 'hidden' as any, flexWrap: 'nowrap' as any } : {}),
   },
   statBox: {
     flex: 1,
