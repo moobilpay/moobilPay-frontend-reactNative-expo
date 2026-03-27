@@ -60,6 +60,7 @@ export default function PaymentBottomSheet({
   const extraDelayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasHandledResult = useRef(false);
   const webViewRef = useRef<WebView>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'failed' | 'success'>('idle');
 
   // Détection du trigger de récupération (Réveil)
   useEffect(() => {
@@ -91,6 +92,7 @@ export default function PaymentBottomSheet({
     if (isOpen) {
       setIsMounted(true);
       hasHandledResult.current = false; // Reset au déploiement
+      setPaymentStatus('idle'); // Reset l'état visuel
       Animated.parallel([
         Animated.spring(slideAnim, {
           toValue: 0,
@@ -124,7 +126,7 @@ export default function PaymentBottomSheet({
   }, [isOpen]);
 
   const showLoadingOverlay =
-    !isInitializing && !isCancelling && !frameVisuallyReady && paymentUrl !== '';
+    !isInitializing && !isCancelling && !frameVisuallyReady && paymentUrl !== '' && paymentStatus === 'idle';
 
   return (
     <Modal
@@ -167,7 +169,7 @@ export default function PaymentBottomSheet({
           )}
 
           <View style={styles.content}>
-            {isCancelling && (
+            {isCancelling && paymentStatus === 'idle' && (
               <View style={styles.overlay}>
                 <ActivityIndicator size="large" color="#dc2626" />
                 <Text style={styles.overlayTitle}>Annulation du paiement en cours...</Text>
@@ -175,7 +177,7 @@ export default function PaymentBottomSheet({
               </View>
             )}
 
-            {isInitializing && !isCancelling && (
+            {isInitializing && !isCancelling && paymentStatus === 'idle' && (
               <View style={styles.overlay}>
                 <View style={styles.bigSpinner}>
                   <ActivityIndicator size="large" color="#dc2626" />
@@ -200,7 +202,41 @@ export default function PaymentBottomSheet({
               </View>
             )}
 
-            {paymentUrl !== '' && !isInitializing && !isCancelling && (
+            {paymentStatus === 'failed' ? (
+              <View style={styles.errorContainer}>
+                <View style={styles.errorIconCircle}>
+                  <Ionicons name="close-circle" size={56} color="#ef4444" />
+                </View>
+                <Text style={styles.errorTitle}>Paiement échoué</Text>
+                <Text style={styles.errorSubtitle}>
+                  La transaction a été annulée ou n'a pas pu être validée par l'opérateur.
+                </Text>
+                
+                <TouchableOpacity 
+                  style={styles.retryBtn} 
+                  onPress={onClose}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#ef4444', '#dc2626']}
+                    style={styles.retryBtnGradient}
+                  >
+                    <Text style={styles.retryBtnText}>Fermer et Réessayer</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : paymentStatus === 'success' ? (
+              <View style={styles.successContainer}>
+                <View style={styles.successIconCircle}>
+                  <Ionicons name="checkmark-circle" size={56} color="#22c55e" />
+                </View>
+                <Text style={styles.successTitle}>Paiement Réussi !</Text>
+                <Text style={styles.successSubtitle}>
+                  Votre transaction est validée. Redirection en cours...
+                </Text>
+                <ActivityIndicator size="small" color="#22c55e" style={{ marginTop: 12 }} />
+              </View>
+            ) : paymentUrl !== '' && !isInitializing && !isCancelling && (
               Platform.OS === 'web' ? (
                 /* Support WEB avec iframe */
                 <iframe
@@ -255,6 +291,7 @@ export default function PaymentBottomSheet({
                     if (failureIndicators.some(i => url.includes(i))) {
                       console.log('❌ [TURBO-URL] Échec détecté !');
                       hasHandledResult.current = true;
+                      setPaymentStatus('failed'); // Affichage de la jolie vue erreur
                       if (onUIFailed) onUIFailed();
                       return;
                     }
@@ -263,6 +300,7 @@ export default function PaymentBottomSheet({
                     if (successIndicators.some(i => url.includes(i)) || (url.includes('tx_ref') && !url.includes('failed'))) {
                       console.log('🚀 [TURBO-URL] Succès détecté !');
                       hasHandledResult.current = true;
+                      setPaymentStatus('success'); // Affichage de la jolie vue succès
                       if (onUIValidated) onUIValidated();
                     }
                   }}
@@ -276,10 +314,12 @@ export default function PaymentBottomSheet({
                       if (data.type === 'PAYMENT_FAILED') {
                          console.log('❌ [TURBO-JS] Échec détecté !');
                          hasHandledResult.current = true;
+                         setPaymentStatus('failed');
                          if (onUIFailed) onUIFailed();
                       } else if (data.type === 'PAYMENT_SUCCESS') {
                          console.log('🚀 [TURBO-JS] Succès détecté !');
                          hasHandledResult.current = true;
+                         setPaymentStatus('success');
                          if (onUIValidated) onUIValidated();
                       }
                     } catch (e) {
@@ -453,5 +493,88 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#fff',
+  },
+  // Nouveaux styles pour les erreurs et succès intégrés
+  errorContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    zIndex: 100,
+  },
+  errorIconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#fef2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1e293b',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
+    fontSize: 15,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  retryBtn: {
+    width: '100%',
+    height: 56,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  retryBtnGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  successContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    zIndex: 100,
+  },
+  successIconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#f0fdf4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1e293b',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  successSubtitle: {
+    fontSize: 15,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });

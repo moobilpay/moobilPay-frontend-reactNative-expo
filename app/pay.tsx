@@ -684,11 +684,8 @@ export default function ReabonnementScreen() {
         }}
         onUIFailed={() => {
           console.log('🔴 [PAY-SCREEN] Échec détecté par le Turbo !');
-          Alert.alert(
-            'Paiement échoué',
-            'La transaction a été annulée ou a échoué. Veuillez réessayer.',
-            [{ text: 'OK', onPress: closePaymentModal }]
-          );
+          // On signale au backend d'arrêter le polling car l'UI a vu l'échec
+          cancelPayment();
         }}
         recoveryTrigger={recoveryTrigger}
       />
