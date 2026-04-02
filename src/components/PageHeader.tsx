@@ -16,6 +16,7 @@ interface PageHeaderProps {
     label: string;
   };
   rightElement?: React.ReactNode;
+  leftElement?: React.ReactNode;
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ 
@@ -25,7 +26,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   variant = 'default',
   amount,
   totalStats,
-  rightElement 
+  rightElement,
+  leftElement 
 }) => {
   const { colors } = useTheme();
 
@@ -41,9 +43,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         <SafeAreaView edges={['top']} style={styles.premiumSafe}>
           <View style={styles.premiumContent}>
             <View style={styles.premiumHeaderRow}>
-              <View style={styles.premiumIconContainer}>
-                <Ionicons name={icon} size={24} color="#fff" />
-              </View>
+              {leftElement ? leftElement : (
+                <View style={styles.premiumIconContainer}>
+                  <Ionicons name={icon} size={24} color="#fff" />
+                </View>
+              )}
               <View style={styles.premiumInfo}>
                 <Text style={styles.premiumTitle}>{title}</Text>
                 {amount ? (
@@ -76,9 +80,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         />
         <SafeAreaView edges={['top']} style={styles.glassSafe}>
           <View style={styles.glassContent}>
-            <View style={styles.glassIconMain}>
-              <Ionicons name={icon} size={24} color="#fff" />
-            </View>
+            {leftElement ? leftElement : (
+              <View style={styles.glassIconMain}>
+                <Ionicons name={icon} size={24} color="#fff" />
+              </View>
+            )}
             <View style={styles.glassTitles}>
               <Text style={styles.glassTitle}>{title}</Text>
               {subtitle && <Text style={styles.glassSubtitle}>{subtitle}</Text>}
@@ -99,9 +105,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.card}>
           <View style={styles.content}>
-            <View style={styles.iconContainer}>
-              <Ionicons name={icon} size={24} color="#dc2626" />
-            </View>
+            {leftElement ? leftElement : (
+              <View style={styles.iconContainer}>
+                <Ionicons name={icon} size={24} color="#dc2626" />
+              </View>
+            )}
             <View style={styles.info}>
               <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
               {subtitle && <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}

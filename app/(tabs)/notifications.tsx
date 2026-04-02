@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PageHeader } from '../../src/components/PageHeader';
 import { useAuth } from '../../src/features/auth/context/AuthContext';
@@ -64,7 +64,9 @@ const NotificationCard = ({ title, body, createdAt, type, isRead, onPress, langu
       </View>
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>{title}</Text>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>{title}</Text>
+          </View>
           <Text style={styles.cardTime}>{getTimeAgo(createdAt)}</Text>
         </View>
         <Text style={[styles.cardBody, { color: colors.textSecondary }]} numberOfLines={2}>{body}</Text>
@@ -185,6 +187,57 @@ export default function NotificationsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => fetchNotifications(true)} />
         }
       >
+        {/* Section Aperçu */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            {t('common_overview') === 'common_overview' ? 'APERÇU' : t('common_overview').toUpperCase()}
+          </Text>
+        </View>
+
+        <View style={styles.statsGrid}>
+          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.statIconWrapper, { backgroundColor: '#3b82f6' }]}>
+              <Ionicons name="notifications" size={18} color="#fff" />
+            </View>
+            <View style={styles.statInfo}>
+              <Text style={[styles.statValueLarge, { color: colors.text }]}>{notifications.length}</Text>
+              <Text style={[styles.statLabelSmall, { color: colors.textSecondary }]}>
+                {t('common_total') === 'common_total' ? 'TOTAL' : t('common_total').toUpperCase()}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.statIconWrapper, { backgroundColor: '#10b981' }]}>
+              <Ionicons name="checkmark-done-circle" size={18} color="#fff" />
+            </View>
+            <View style={styles.statInfo}>
+              <Text style={[styles.statValueLarge, { color: colors.text }]}>{notifications.length - unreadCount}</Text>
+              <Text style={[styles.statLabelSmall, { color: colors.textSecondary }]}>
+                LUES
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.statIconWrapper, { backgroundColor: '#ef4444' }]}>
+              <Ionicons name="mail-unread" size={18} color="#fff" />
+            </View>
+            <View style={styles.statInfo}>
+              <Text style={[styles.statValueLarge, { color: colors.text }]}>{unreadCount}</Text>
+              <Text style={[styles.statLabelSmall, { color: colors.textSecondary }]}>
+                NON LUES
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.recentHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            {t('common_recent') === 'common_recent' ? 'RÉCENTES' : t('common_recent').toUpperCase()}
+          </Text>
+        </View>
+
         {loading && notifications.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#dc2626" />
@@ -303,12 +356,14 @@ const styles = StyleSheet.create({
   },
   cardTime: {
     fontSize: 11,
+    fontWeight: '600',
     color: '#94a3b8',
   },
   cardBody: {
     fontSize: 13,
     color: '#64748b',
-    lineHeight: 18,
+    lineHeight: 20,
+    marginTop: 2,
   },
   unreadBadge: {
     position: 'absolute',
@@ -353,5 +408,65 @@ const styles = StyleSheet.create({
     padding: 60,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sectionHeader: {
+    paddingHorizontal: 20,
+    marginTop: 0,
+    marginBottom: 12,
+  },
+  recentHeader: {
+    paddingHorizontal: 20,
+    marginTop: 30,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748b',
+    letterSpacing: 0.5,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 10,
+    ...(Platform.OS === 'web' ? { overflow: 'hidden' as any, flexWrap: 'nowrap' as any } : {}),
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 80,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  statIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statInfo: {
+    flex: 1,
+  },
+  statValueLarge: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#1e293b',
+  },
+  statLabelSmall: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#64748b',
+    letterSpacing: 0.5,
   },
 });

@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -438,14 +439,24 @@ export default function HomeScreen() {
         {/* Actions rapides */}
         <View style={styles.actionsGrid}>
           {[
-            { id: "accounts", icon: "people-outline", label: t('home_accounts'), route: "/accounts" },
+            { id: "accounts", icon: "people-outline", label: t('home_accounts'), route: "/accounts", disabled: true },
             { id: "help", icon: "help-circle-outline", label: t('home_help'), route: "/help" },
-            { id: "news", icon: "film-outline", label: t('home_news'), route: "/news" },
-            { id: "share", icon: "share-social-outline", label: t('home_share'), route: "/share" },
+            { id: "news", icon: "film-outline", label: t('home_news'), route: "/news", disabled: true },
+            { id: "share", icon: "share-social-outline", label: t('home_share'), route: "/share", disabled: true },
           ].map((item) => (
-            <TouchableOpacity key={item.id} style={styles.actionCard} onPress={() => router.push(item.route as any)}>
+            <TouchableOpacity 
+              key={item.id} 
+              style={styles.actionCard} 
+              onPress={() => {
+                if (item.disabled) {
+                  Alert.alert("Bientôt disponible", "Cette fonctionnalité sera disponible dans une prochaine mise à jour.");
+                } else {
+                  router.push(item.route as any);
+                }
+              }}
+            >
               <View style={[styles.actionCardIcon, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Ionicons name={item.icon as any} size={22} color="#dc2626" />
+                <Ionicons name={item.icon as any} size={22} color={item.disabled ? "#94a3b8" : "#dc2626"} />
               </View>
               <Text style={[styles.actionCardLabel, { color: colors.textSecondary }]}>{item.label}</Text>
             </TouchableOpacity>

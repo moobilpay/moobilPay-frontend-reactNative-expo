@@ -625,19 +625,19 @@ export default function ReabonnementScreen() {
       {/* Loader global (page 1.5 seulement) */}
       <AppLoader visible={isLoading && currentPage === 1.5} message="Vérification..." />
 
-      {/* Header avec action Home */}
+      {/* Header avec action retour au menu */}
       <PageHeader
         title={t('pay_title')}
         subtitle={t('pay_subtitle')}
         icon="play-circle"
         variant="glass"
-        rightElement={
+        leftElement={
           <TouchableOpacity 
             onPress={handleHome}
-            style={styles.homeHeaderBtn}
+            style={styles.backHeaderBtn}
             activeOpacity={0.7}
           >
-            <Ionicons name="home" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
         }
       />
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', overflow: 'hidden' as any },
   body: { flex: 1, overflow: 'hidden' as any },
   // ── Header Action ──
-  homeHeaderBtn: {
+  backHeaderBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,

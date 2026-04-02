@@ -129,9 +129,7 @@ export default function PaymentBottomSheet({
 
         {/* Bottom Sheet */}
         <Animated.View style={[styles.sheet, { height: SHEET_HEIGHT, transform: [{ translateY: slideAnim }] }]}>
-          <View style={styles.notch} />
-
-          {!isInitializing && !isCancelling && (
+          {!isInitializing && !isCancelling ? (
             <View style={styles.header}>
               <LinearGradient
                 colors={['#230f0f', '#3e1616']}
@@ -139,6 +137,7 @@ export default function PaymentBottomSheet({
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
               />
+              <View style={styles.notchDark} />
               <View style={styles.headerContent}>
                 <View style={styles.headerLeft}>
                   <View style={styles.shieldBadge}>
@@ -151,37 +150,52 @@ export default function PaymentBottomSheet({
                 </TouchableOpacity>
               </View>
             </View>
+          ) : (
+            <View style={styles.notch} />
           )}
 
           <View style={styles.content}>
             {isCancelling && (
-              <View style={styles.overlay}>
-                <ActivityIndicator size="large" color="#dc2626" />
-                <Text style={styles.overlayTitle}>Annulation du paiement en cours...</Text>
-                <Text style={styles.overlaySubtitle}>Veuillez patienter</Text>
+              <View style={styles.premiumOverlay}>
+                <View style={styles.spinnerCoreContainer}>
+                  <View style={[styles.spinnerOuterRing, { backgroundColor: 'rgba(100, 116, 139, 0.05)', borderColor: 'rgba(100, 116, 139, 0.1)' }]}>
+                    <ActivityIndicator size="large" color="#64748b" />
+                  </View>
+                  <Ionicons name="close-circle" size={24} color="#64748b" style={{ position: 'absolute' }} />
+                </View>
+                <Text style={styles.premiumOverlayTitle}>Annulation en cours...</Text>
+                <Text style={styles.premiumOverlaySubtitle}>Fermeture sécurisée de la session</Text>
               </View>
             )}
 
             {isInitializing && !isCancelling && (
-              <View style={styles.overlay}>
-                <View style={styles.bigSpinner}>
-                  <ActivityIndicator size="large" color="#dc2626" />
+              <View style={styles.premiumOverlay}>
+                <View style={styles.spinnerCoreContainer}>
+                  <View style={styles.spinnerOuterRing}>
+                    <ActivityIndicator size="large" color="#ef4444" />
+                  </View>
+                  <Ionicons name="shield-checkmark" size={24} color="#dc2626" style={{ position: 'absolute' }} />
                 </View>
-                <Text style={styles.overlayTitle}>Initialisation du paiement...</Text>
-                <Text style={styles.overlaySubtitle}>
-                  Création de la transaction sécurisée en cours...
+                <Text style={styles.premiumOverlayTitle}>Sécurisation de la transaction</Text>
+                <Text style={styles.premiumOverlaySubtitle}>
+                  Veuillez patienter pendant que nous établissons une connexion sécurisée avec votre opérateur...
                 </Text>
               </View>
             )}
 
             {showLoadingOverlay && (
-              <View style={styles.overlay}>
-                <ActivityIndicator size="large" color="#dc2626" />
-                <Text style={styles.overlayTitle}>Chargement du paiement sécurisé...</Text>
-                <View style={styles.instructionRow}>
-                  <Ionicons name="information-circle-outline" size={18} color="#3b82f6" />
-                  <Text style={styles.instructionText}>
-                    Choisissez votre réseau et entrez votre numéro de paiement
+              <View style={styles.premiumOverlay}>
+                <View style={styles.spinnerCoreContainer}>
+                  <View style={[styles.spinnerOuterRing, { backgroundColor: 'rgba(59, 130, 246, 0.05)', borderColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                    <ActivityIndicator size="large" color="#3b82f6" />
+                  </View>
+                  <Ionicons name="phone-portrait" size={24} color="#3b82f6" style={{ position: 'absolute' }} />
+                </View>
+                <Text style={styles.premiumOverlayTitle}>En attente de l'opérateur...</Text>
+                <View style={[styles.instructionRow, { backgroundColor: 'rgba(59, 130, 246, 0.08)' }]}>
+                  <Ionicons name="information-circle" size={22} color="#3b82f6" />
+                  <Text style={[styles.instructionText, { color: '#1e3a8a', fontWeight: '600' }]}>
+                    Consultez votre téléphone pour saisir votre code secret et confirmer le paiement.
                   </Text>
                 </View>
               </View>
@@ -279,16 +293,24 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 4,
   },
+  notchDark: {
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 10,
+  },
   header: {
-    height: 52,
     position: 'relative',
-    justifyContent: 'center',
+    paddingBottom: 14,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     zIndex: 1,
   },
   headerLeft: {
@@ -300,7 +322,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(34,197,94,0.15)',
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -310,61 +332,70 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   closeBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 10,
   },
   closeBtnText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   content: {
     flex: 1,
     position: 'relative',
   },
-  overlay: {
+  premiumOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 18,
-    zIndex: 10,
     padding: 32,
+    zIndex: 10,
   },
-  bigSpinner: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#fef2f2',
+  spinnerCoreContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  spinnerOuterRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  overlayTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
+  premiumOverlayTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0f172a',
     textAlign: 'center',
+    marginBottom: 10,
+    letterSpacing: -0.5,
   },
-  overlaySubtitle: {
-    fontSize: 13,
+  premiumOverlaySubtitle: {
+    fontSize: 14,
     color: '#64748b',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   instructionRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: '#eff6ff',
-    padding: 14,
-    borderRadius: 12,
-    gap: 10,
+    padding: 16,
+    borderRadius: 16,
+    gap: 12,
     width: '100%',
+    marginTop: 10,
   },
   instructionText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 13.5,
     color: '#3b82f6',
     lineHeight: 20,
   },
