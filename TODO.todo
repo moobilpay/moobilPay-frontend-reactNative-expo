@@ -22,3 +22,9 @@ TODO: Création des Icônes Optimisées
           "foregroundImage": "./assets/android-icon-foreground.png",
           "monochromeImage": "./assets/android-icon-monochrome.png"
         }
+
+[ ] Bloquer l'application en cas de nouvelle mise à jour disponible
+    [ ] Récupérer la version actuelle de l'app (depuis app.json ou Expo Constants)
+    [ ] Vérifier la version minimale requise via l'API au démarrage (ex: /api/config/version)
+    [ ] Afficher un écran de blocage forcé avec un lien direct vers le Store si la version est obsolète
+
