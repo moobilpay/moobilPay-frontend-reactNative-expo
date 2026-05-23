@@ -116,8 +116,21 @@ export default function ReabonnementScreen() {
   const [frameLoaded, setFrameLoaded] = useState(false);            // paymentFrameLoaded
   const [isInstantClose, setIsInstantClose] = useState(false);      // instantClose
 
-  // ── UI général ──
   const [isLoading, setIsLoading] = useState(false);
+  const [recoveryTrigger, setRecoveryTrigger] = useState(0);
+
+  // ─── Récupération au retour du background ──────────────────────────────
+  const appState = useRef(AppState.currentState);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        console.log('📱 [APP-STATE] Retour au premier plan ! Réveil du Turbo...');
+        setRecoveryTrigger(prev => prev + 1);
+      }
+      appState.current = nextAppState;
+    });
+    return () => subscription.remove();
+  }, []);
 
   const selectedPlan = plans.find((p) => p.id === selectedPlanId);
   const stepNumber = getStepNumber(currentPage, activeStep);
@@ -461,7 +474,10 @@ export default function ReabonnementScreen() {
         setVerificationStep((prev) => Math.max(prev, 1));
       })
       .catch((err) => {
-        console.error('❌ [SUBSCRIPTION-ERROR] Erreur background:', err.response?.data || err.message);
+        // Souvent une "Network Error" due au passage en background pour l'USSD.
+        // On ne bloque pas car le polling serveur tourne normalement déjà.
+        console.log('📝 [SUBSCRIPTION-NOTE] Requête init terminée (possible coupure réseau background).');
+        setVerificationStep((prev) => Math.max(prev, 1));
       });
 
     } catch (err: any) {
@@ -667,9 +683,11 @@ export default function ReabonnementScreen() {
           }
         }}
         onUIFailed={() => {
-          console.log('❌ [TURBO-UI] Échec ou annulation visible dans WebView ! Fermeture immédiate.');
-          closePaymentModal();
+          console.log('🔴 [PAY-SCREEN] Échec détecté par le Turbo !');
+          // On signale au backend d'arrêter le polling car l'UI a vu l'échec
+          cancelPayment();
         }}
+        recoveryTrigger={recoveryTrigger}
       />
     </View>
   );

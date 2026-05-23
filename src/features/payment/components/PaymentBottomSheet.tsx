@@ -35,8 +35,9 @@ interface Props {
   isInstantClose?: boolean;
   onClose: () => void;
   onFrameLoad: () => void;
-  onUIValidated?: () => void; // Nouveau: pour fermer dès que la WebView voit le succès
-  onUIFailed?: () => void; // Nouveau: pour fermer dès que la WebView voit un échec
+  onUIValidated?: () => void;
+  onUIFailed?: () => void;
+  recoveryTrigger?: number; // Incrémenté par le parent pour forcer un check
 }
 
 export default function PaymentBottomSheet({
@@ -50,12 +51,24 @@ export default function PaymentBottomSheet({
   onFrameLoad,
   onUIValidated,
   onUIFailed,
+  recoveryTrigger = 0,
 }: Props) {
   const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const [isMounted, setIsMounted] = useState(false);
   const [frameVisuallyReady, setFrameVisuallyReady] = useState(false);
   const extraDelayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasHandledResult = useRef(false);
+  const webViewRef = useRef<WebView>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'failed' | 'success'>('idle');
+
+  // Détection du trigger de récupération (Réveil)
+  useEffect(() => {
+    if (isOpen && recoveryTrigger > 0 && webViewRef.current) {
+      console.log('🔄 [RECOVERY-BRIDGE] Réveil forcé de la WebView...');
+      webViewRef.current.injectJavaScript('if(typeof check === "function") check(); true;');
+    }
+  }, [recoveryTrigger, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -78,6 +91,8 @@ export default function PaymentBottomSheet({
   useEffect(() => {
     if (isOpen) {
       setIsMounted(true);
+      hasHandledResult.current = false; // Reset au déploiement
+      setPaymentStatus('idle'); // Reset l'état visuel
       Animated.parallel([
         Animated.spring(slideAnim, {
           toValue: 0,
@@ -110,10 +125,8 @@ export default function PaymentBottomSheet({
     }
   }, [isOpen]);
 
-  console.log(`📑 [SHEET-RENDER] isOpen:${isOpen}, initialize:${isInitializing}, cancel:${isCancelling}, visuallyReady:${frameVisuallyReady}`);
-
   const showLoadingOverlay =
-    !isInitializing && !isCancelling && !frameVisuallyReady && paymentUrl !== '';
+    !isInitializing && !isCancelling && !frameVisuallyReady && paymentUrl !== '' && paymentStatus === 'idle';
 
   return (
     <Modal
@@ -156,7 +169,7 @@ export default function PaymentBottomSheet({
           )}
 
           <View style={styles.content}>
-            {isCancelling && (
+            {isCancelling && paymentStatus === 'idle' && (
               <View style={styles.overlay}>
                 <ActivityIndicator size="large" color="#dc2626" />
                 <Text style={styles.overlayTitle}>Annulation du paiement en cours...</Text>
@@ -164,7 +177,7 @@ export default function PaymentBottomSheet({
               </View>
             )}
 
-            {isInitializing && !isCancelling && (
+            {isInitializing && !isCancelling && paymentStatus === 'idle' && (
               <View style={styles.overlay}>
                 <View style={styles.bigSpinner}>
                   <ActivityIndicator size="large" color="#dc2626" />
@@ -189,7 +202,41 @@ export default function PaymentBottomSheet({
               </View>
             )}
 
-            {paymentUrl !== '' && !isInitializing && !isCancelling && (
+            {paymentStatus === 'failed' ? (
+              <View style={styles.errorContainer}>
+                <View style={styles.errorIconCircle}>
+                  <Ionicons name="close-circle" size={56} color="#ef4444" />
+                </View>
+                <Text style={styles.errorTitle}>Paiement échoué</Text>
+                <Text style={styles.errorSubtitle}>
+                  La transaction a été annulée ou n'a pas pu être validée par l'opérateur.
+                </Text>
+                
+                <TouchableOpacity 
+                  style={styles.retryBtn} 
+                  onPress={onClose}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#ef4444', '#dc2626']}
+                    style={styles.retryBtnGradient}
+                  >
+                    <Text style={styles.retryBtnText}>Fermer et Réessayer</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : paymentStatus === 'success' ? (
+              <View style={styles.successContainer}>
+                <View style={styles.successIconCircle}>
+                  <Ionicons name="checkmark-circle" size={56} color="#22c55e" />
+                </View>
+                <Text style={styles.successTitle}>Paiement Réussi !</Text>
+                <Text style={styles.successSubtitle}>
+                  Votre transaction est validée. Redirection en cours...
+                </Text>
+                <ActivityIndicator size="small" color="#22c55e" style={{ marginTop: 12 }} />
+              </View>
+            ) : paymentUrl !== '' && !isInitializing && !isCancelling && (
               Platform.OS === 'web' ? (
                 /* Support WEB avec iframe */
                 <iframe
@@ -209,57 +256,94 @@ export default function PaymentBottomSheet({
               ) : (
                 /* Support MOBILE avec WebView native */
                 <WebView
+                  ref={webViewRef}
                   source={{ uri: paymentUrl }}
                   style={[styles.webView, !frameVisuallyReady && styles.webViewHidden]}
                   onLoad={onFrameLoad}
                   onError={(e) => {
-                    console.error('❌ [WEBVIEW-ERROR] Erreur de chargement:', e.nativeEvent);
+                    // Si on a déjà capté un succès ou un échec, on ignore les erreurs de redirection finales
+                    if (hasHandledResult.current) return;
+                    
+                    if (!e.nativeEvent.url.includes('localhost')) {
+                      console.error('❌ [WEBVIEW-ERROR] Erreur:', e.nativeEvent);
+                    }
                     onFrameLoad();
                   }}
-                  onNavigationStateChange={(navState) => {
-                    console.log('🌐 [WEBVIEW-NAV] URL:', navState.url);
+                  onShouldStartLoadWithRequest={(request) => {
+                    const url = request.url.toLowerCase();
                     
-                    // DÉTECTION TURBO DU SUCCÈS PAR URL
-                    const successIndicators = ['success', 'completed', 'tx_ref', 'done', 'transaction_id'];
-                    const isSuccessURL = successIndicators.some(indicator => 
-                      navState.url.toLowerCase().includes(indicator)
-                    );
+                    // Si on a déjà fini, on gèle le navigateur
+                    if (hasHandledResult.current) return false;
 
-                    if (isSuccessURL) {
-                      console.log('🚀 [TURBO-DETECTION] Succès détecté via URL ! Fermeture précoce...');
-                      if (onUIValidated) onUIValidated();
+                    // Filtrer les intentions mobiles qui causent l'erreur -1002 (Intent/Tel/SMS)
+                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                      console.log('📱 [WEBVIEW-INTENT] Bloqué pour éviter l\'erreur native:', url);
+                      return false; 
                     }
 
-                    console.log('🌐 [WEBVIEW-NAV] Titre:', navState.title);
+                    return true;
+                  }}
+                  onNavigationStateChange={(navState) => {
+                    if (hasHandledResult.current) return;
+                    const url = navState.url.toLowerCase();
+                    
+                    const failureIndicators = ['status=failed', 'status=cancelled', 'cancel', 'error'];
+                    if (failureIndicators.some(i => url.includes(i))) {
+                      console.log('❌ [TURBO-URL] Échec détecté !');
+                      hasHandledResult.current = true;
+                      setPaymentStatus('failed'); // Affichage de la jolie vue erreur
+                      if (onUIFailed) onUIFailed();
+                      return;
+                    }
+
+                    const successIndicators = ['success', 'completed', 'done'];
+                    if (successIndicators.some(i => url.includes(i)) || (url.includes('tx_ref') && !url.includes('failed'))) {
+                      console.log('🚀 [TURBO-URL] Succès détecté !');
+                      hasHandledResult.current = true;
+                      setPaymentStatus('success'); // Affichage de la jolie vue succès
+                      if (onUIValidated) onUIValidated();
+                    }
                   }}
                   onMessage={(event) => {
+                    if (hasHandledResult.current) return;
                     try {
-                      const data = JSON.parse(event.nativeEvent.data);
+                      const data = typeof event.nativeEvent.data === 'string' && event.nativeEvent.data.startsWith('{') 
+                        ? JSON.parse(event.nativeEvent.data) 
+                        : { type: event.nativeEvent.data };
+
                       if (data.type === 'PAYMENT_FAILED') {
-                         console.log('❌ [TURBO-DETECTION] Échec détecté via le contenu de la page ! Fermeture précoce...');
+                         console.log('❌ [TURBO-JS] Échec détecté !');
+                         hasHandledResult.current = true;
+                         setPaymentStatus('failed');
                          if (onUIFailed) onUIFailed();
-                         else onClose();
+                      } else if (data.type === 'PAYMENT_SUCCESS') {
+                         console.log('🚀 [TURBO-JS] Succès détecté !');
+                         hasHandledResult.current = true;
+                         setPaymentStatus('success');
+                         if (onUIValidated) onUIValidated();
                       }
                     } catch (e) {
-                      console.log('✉️ [WEBVIEW-MSG] Message reçu:', event.nativeEvent.data);
+                       // Fallback simple
                     }
                   }}
                   injectedJavaScript={`
                     (function() {
-                      function checkFailure() {
-                        if (document.body) {
-                          var text = document.body.innerText.toLowerCase();
-                          // Mots-clés indiquant un échec ou annulation par l'utilisateur
-                          if (text.includes("echoue") || text.includes("échoué") || 
-                              text.includes("transaction a echoue") || text.includes("transaction a échoué") ||
-                              text.includes("payment failed") || text.includes("annulé")) {
-                            window.ReactNativeWebView.postMessage(JSON.stringify({ type: "PAYMENT_FAILED" }));
-                            return; // Stop checking if we found it
-                          }
+                      window.check = function() {
+                        if (!document.body) return;
+                        var text = document.body.innerText.toLowerCase();
+                        var url = window.location.href.toLowerCase();
+                        
+                        var fail = ["echoue", "échoué", "failed", "annulé", "annule", "error", "status=failed"];
+                        var success = ["success", "approved", "completed", "done"];
+                        
+                        if (fail.some(function(k){ return text.indexOf(k)!==-1 || url.indexOf(k)!==-1})) {
+                          window.ReactNativeWebView.postMessage(JSON.stringify({type:"PAYMENT_FAILED"}));
+                        } else if (success.some(function(k){ return text.indexOf(k)!==-1 || url.indexOf(k)!==-1}) || (url.indexOf("tx_ref")!==-1 && url.indexOf("failed")===-1)) {
+                          window.ReactNativeWebView.postMessage(JSON.stringify({type:"PAYMENT_SUCCESS"}));
                         }
-                        setTimeout(checkFailure, 2000); // Revérifie toutes les 2 secondes
-                      }
-                      setTimeout(checkFailure, 2000);
+                      };
+                      setInterval(window.check, 2000);
+                      window.check();
                     })();
                     true;
                   `}
@@ -267,7 +351,7 @@ export default function PaymentBottomSheet({
                   domStorageEnabled
                   startInLoadingState={false}
                   originWhitelist={['*']}
-                  setSupportMultipleWindows={false} // BLOQUE LES POPUPS qui ralentissent
+                  setSupportMultipleWindows={true}
                   allowsBackForwardNavigationGestures={false}
                 />
               )
@@ -408,5 +492,89 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: '#fff',
+  },
+  // Nouveaux styles pour les erreurs et succès intégrés
+  errorContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    zIndex: 100,
+  },
+  errorIconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#fef2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1e293b',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
+    fontSize: 15,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  retryBtn: {
+    width: '100%',
+    height: 56,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  retryBtnGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  successContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    zIndex: 100,
+  },
+  successIconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#f0fdf4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1e293b',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  successSubtitle: {
+    fontSize: 15,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
