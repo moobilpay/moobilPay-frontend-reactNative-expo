@@ -45,9 +45,10 @@ export function useNotifications() {
                 return;
             }
 
-            if (user.fcmToken !== token) {
-                console.log('📤 [NOTIFICATIONS] Synchronisation du token avec le backend...');
-                await userFirestore.updateUser({ ...user, fcmToken: token }, firebaseUser);
+            const tokenType: 'ios' | 'android' = Platform.OS === 'ios' ? 'ios' : 'android';
+            if (user.fcmToken !== token || user.tokenType !== tokenType) {
+                console.log(`📤 [NOTIFICATIONS] Synchronisation du token (${tokenType}) avec le backend...`);
+                await userFirestore.updateUser({ ...user, fcmToken: token, tokenType }, firebaseUser);
                 await storage.remove('unsentFcmToken');
             }
         } catch (err) {
@@ -152,16 +153,9 @@ export function useNotifications() {
 
         if (Device.isDevice || true) { // Forcé pour le debug
             try {
-                // Token FCM unifié Android + iOS (pont APNs→FCM géré par @react-native-firebase/messaging sur iOS)
-                const { default: messaging } = await import('@react-native-firebase/messaging');
-
-                if (Platform.OS === 'ios') {
-                    // Sur iOS il faut attendre l'enregistrement APNs avant de demander le token FCM
-                    await messaging().registerDeviceForRemoteMessages();
-                }
-
-                token = await messaging().getToken();
-                console.log('✅ [NOTIFICATIONS] FCM Token récupéré:', token);
+                // Token natif: FCM sur Android, APNs brut sur iOS (le backend route selon la plateforme)
+                token = (await Notifications.getDevicePushTokenAsync()).data;
+                console.log(`✅ [NOTIFICATIONS] Native ${Platform.OS} token récupéré:`, token);
             } catch (e: any) {
                 console.error('❌ [NOTIFICATIONS] Erreur lors de la récupération du token:', e.message);
             }

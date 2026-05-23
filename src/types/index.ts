@@ -15,4 +15,5 @@ export interface Users {
     statistique: number;
     fastFoodId: string;
     fcmToken?: string;
+    tokenType?: 'ios' | 'android';
 }

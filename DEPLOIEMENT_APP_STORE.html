@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Déploiement App Store — MoobilPay</title>
+<style>
+  :root {
+    --bg: #0a0a12;
+    --card: #13131f;
+    --card-2: #1a1a28;
+    --text: #e8e8f0;
+    --muted: #8a8aa0;
+    --accent: #c41a1a;
+    --accent-soft: rgba(196, 26, 26, 0.15);
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --border: rgba(255,255,255,0.08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #0a0a12 0%, #0f0f1a 100%);
+    color: var(--text);
+    line-height: 1.65;
+    padding: 40px 20px;
+  }
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 50px;
+    padding: 40px 30px;
+    background: var(--card);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+  header .badge {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: #ff5757;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff 0%, #999 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header p {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 16px;
+  }
+  section {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  section:hover {
+    border-color: rgba(196, 26, 26, 0.3);
+  }
+  h2 {
+    margin: 0 0 20px;
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  h2 .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  h3 {
+    font-size: 16px;
+    color: var(--muted);
+    margin-top: 24px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  ul {
+    padding-left: 0;
+    list-style: none;
+  }
+  ul li {
+    padding: 10px 0 10px 28px;
+    position: relative;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  ul li:last-child {
+    border-bottom: none;
+  }
+  ul li::before {
+    content: "▸";
+    position: absolute;
+    left: 8px;
+    top: 10px;
+    color: var(--accent);
+    font-weight: bold;
+  }
+  ul li.done::before { content: "✅"; color: var(--success); }
+  ul li.warn::before { content: "⚠️"; color: var(--warning); }
+  code {
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #ff9a9a;
+    font-family: "SF Mono", Monaco, "Courier New", monospace;
+  }
+  pre {
+    background: #05050a;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 16px 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-size: 13px;
+  }
+  pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #a8e6a3;
+  }
+  a {
+    color: #ff8080;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(255,128,128,0.4);
+  }
+  a:hover {
+    color: #ff5757;
+    border-bottom-style: solid;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    background: var(--card-2);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  table th {
+    background: rgba(196, 26, 26, 0.1);
+    color: #ff8080;
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  table td {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .callout {
+    padding: 16px 20px;
+    border-radius: 10px;
+    margin: 16px 0;
+    font-size: 14px;
+    border-left: 4px solid;
+  }
+  .callout.warn {
+    background: rgba(245, 158, 11, 0.08);
+    border-color: var(--warning);
+    color: #fde68a;
+  }
+  .callout.info {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: #3b82f6;
+    color: #bfdbfe;
+  }
+  .callout.success {
+    background: rgba(34, 197, 94, 0.08);
+    border-color: var(--success);
+    color: #bbf7d0;
+  }
+  .pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    margin-left: 6px;
+  }
+  .pill.ok { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+  .pill.warn { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+  .tldr {
+    background: linear-gradient(135deg, rgba(196, 26, 26, 0.1), rgba(196, 26, 26, 0.02));
+    border: 1px solid rgba(196, 26, 26, 0.3);
+  }
+  .tldr ol {
+    counter-reset: tldr;
+    padding-left: 0;
+    list-style: none;
+  }
+  .tldr ol li {
+    counter-increment: tldr;
+    padding: 12px 16px 12px 50px;
+    margin: 8px 0;
+    background: var(--card-2);
+    border-radius: 10px;
+    position: relative;
+  }
+  .tldr ol li::before {
+    content: counter(tldr);
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <span class="badge">CHECKLIST</span>
+    <h1>Déploiement App Store</h1>
+    <p>MoobilPay · Guide complet pour publier sur l'App Store iOS</p>
+  </header>
+
+  <section>
+    <h2><span class="step-num">1</span> Côté Apple Developer</h2>
+    <p style="color: var(--muted); margin-top: -10px;">Compte payant requis : 99 USD/an <span class="pill ok">✅ déjà fait</span></p>
+    <ul>
+      <li class="done">App ID <code>com.moobilpay.com</code> avec capabilities <strong>Sign in with Apple</strong> + <strong>Push Notifications</strong></li>
+      <li class="done">Clé APNs <code>.p8</code> uploadée dans Firebase</li>
+      <li class="warn"><strong>Vérifier le statut du compte</strong> : <a href="https://developer.apple.com/account" target="_blank">developer.apple.com/account</a> → ton compte doit être <em>Active</em>. Renouvellement annuel sinon tout est suspendu.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="step-num">2</span> Créer l'app sur App Store Connect</h2>
+    <p>Va sur <a href="https://appstoreconnect.apple.com" target="_blank">appstoreconnect.apple.com</a> → <strong>Mes apps</strong> → bouton <strong>+</strong> → <strong>Nouvelle app</strong>.</p>
+    <h3>Champs à remplir</h3>
+    <ul>
+      <li><strong>Plateformes</strong> : iOS</li>
+      <li><strong>Nom</strong> : <code>MoobilPay</code> (30 caractères max, <strong>unique mondialement</strong> — vérifie qu'il n'est pas pris)</li>
+      <li><strong>Langue principale</strong> : Français</li>
+      <li><strong>Bundle ID</strong> : sélectionne <code>com.moobilpay.com</code> dans la liste</li>
+      <li><strong>SKU</strong> : identifiant interne unique, ex. <code>MOOBILPAY-IOS-001</code></li>
+      <li><strong>Accès utilisateur</strong> : "Complet"</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="step-num">3</span> Ressources visuelles</h2>
+    <p>Obligatoires (à uploader dans la fiche app) :</p>
+    <table>
+      <thead>
+        <tr><th>Ressource</th><th>Format</th><th>Taille</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Icône app</td><td>PNG, sans transparence, sans coins arrondis</td><td>1024×1024 px</td></tr>
+        <tr><td>Screenshots iPhone 6.7"</td><td>PNG ou JPG</td><td>1290×2796 ou 1320×2868 (min 3, max 10)</td></tr>
+        <tr><td>Screenshots iPhone 6.5"</td><td>PNG ou JPG</td><td>1242×2688 <em>(recommandé)</em></td></tr>
+        <tr><td>Screenshots iPad 13"</td><td>si <code>supportsTablet: true</code></td><td>2064×2752 px</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="step-num">4</span> Métadonnées obligatoires</h2>
+    <ul>
+      <li><strong>Catégorie principale</strong> : <code>Finance</code> + secondaire <code>Utilitaires</code></li>
+      <li><strong>Description</strong> (4000 caractères max) : pitch produit</li>
+      <li><strong>Mots-clés</strong> (100 caractères, séparés par virgules) : <code>netflix, paiement, mobile money, mtn, orange, afrique</code></li>
+      <li><strong>URL d'assistance</strong> <span class="pill warn">obligatoire</span> : page web où l'utilisateur peut te contacter</li>
+      <li><strong>URL de marketing</strong> (optionnel)</li>
+      <li><strong>URL de politique de confidentialité</strong> <span class="pill warn">obligatoire depuis 2018</span> : page hébergée et publique</li>
+      <li><strong>Coordonnées de contact</strong> pour Apple Review (téléphone + email valides)</li>
+      <li><strong>Compte de test</strong> : email + mot de passe d'un compte démo (Apple doit pouvoir tester ton app)</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="step-num">5</span> App Privacy — déclarations légales</h2>
+    <p>Tu dois déclarer <strong>toutes</strong> les données collectées :</p>
+    <ul>
+      <li>Email (auth) → <em>Contact info</em></li>
+      <li>UID Firebase → <em>User ID</em></li>
+      <li>Token FCM → <em>Device ID</em></li>
+      <li>Numéro de téléphone (si collecté) → <em>Contact info</em></li>
+      <li>Données de transaction → <em>Purchase history</em></li>
+    </ul>
+    <div class="callout info">
+      Pour <strong>chaque</strong> donnée : déclare son usage (Analytics, App Functionality, etc.) et si elle est liée à l'identité.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step-num">6</span> Build production EAS</h2>
+    <pre><code>eas build -p ios --profile production</code></pre>
+    <div class="callout info">
+      Vérifie ton <code>eas.json</code> — le profil <code>production</code> doit avoir <code>distribution: "store"</code>.
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step-num">7</span> Soumettre à Apple</h2>
+    <p>Quand le build production est ✅ :</p>
+    <pre><code>eas submit -p ios --latest</code></pre>
+    <p>EAS uploade ton <code>.ipa</code> vers App Store Connect automatiquement. Ensuite :</p>
+    <ul>
+      <li>Ta fiche app → <strong>TestFlight</strong> (le build apparaît après 10-30 min de traitement Apple)</li>
+      <li><strong>Beta testers</strong> : possibilité de tester via TestFlight avant publication</li>
+      <li><strong>App Store</strong> → sélectionne le build → <strong>Ajouter à examen</strong> → <strong>Soumettre à l'examen</strong></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="step-num">8</span> Examen Apple (App Review)</h2>
+    <ul>
+      <li><strong>Délai</strong> : 24–72h en moyenne (parfois 1 semaine si forte charge)</li>
+      <li><strong>Taux de refus 1ère soumission</strong> : ~40% (normal). Apple donne la raison, tu corriges, tu re-soumets.</li>
+    </ul>
+    <h3>Pièges classiques pour MoobilPay</h3>
+    <ul>
+      <li class="done">Sign in with Apple <strong>obligatoire</strong> si Google/Facebook login (Guideline 4.8)</li>
+      <li class="done">Compte de test valide (sinon refus immédiat)</li>
+      <li class="warn"><strong>Paiement Netflix</strong> : Apple peut demander des clarifications. Bien expliquer que MoobilPay est un intermédiaire de paiement, pas un revendeur.</li>
+      <li class="warn"><strong>IAP Apple</strong> : si tu vends du contenu numérique consommé dans l'app, Apple exige son IAP avec 15-30 % de commission. Pour mobile money → service externe, tu es probablement exempté — à argumenter.</li>
+      <li class="warn"><strong>Politique de confidentialité</strong> : l'URL doit vraiment marcher et le contenu correspondre à ce que tu déclares dans App Privacy.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="step-num">9</span> Après approbation</h2>
+    <ul>
+      <li>L'app passe en état <strong>Ready for sale</strong> → disponible sur l'App Store en ~2h</li>
+      <li>Tu choisis les <strong>pays/régions</strong> où elle est dispo (Pricing &amp; Availability)</li>
+      <li>Les mises à jour passent toutes par App Review (généralement plus rapide, ~24h)</li>
+    </ul>
+  </section>
+
+  <section class="tldr">
+    <h2><span class="step-num">⚡</span> TL;DR — Ordre pratique</h2>
+    <ol>
+      <li>Termine le build dev et <strong>teste à fond</strong> Apple Sign In + notifs sur iPhone</li>
+      <li>Crée la fiche app sur App Store Connect <em>(15 min)</em></li>
+      <li>Prépare icône 1024×1024 + 3-5 screenshots iPhone <em>(~1h)</em></li>
+      <li>Rédige description + politique de confidentialité hébergée <em>(~1-2h)</em></li>
+      <li>Build production : <code>eas build -p ios --profile production</code> <em>(~20 min)</em></li>
+      <li>Submit : <code>eas submit -p ios --latest</code> <em>(~5 min)</em></li>
+      <li>Configure App Privacy + métadonnées → sélectionne le build → Submit for review</li>
+      <li>Attendre 1–3 jours ⏳</li>
+    </ol>
+  </section>
+
+  <footer>
+    MoobilPay · Guide de déploiement iOS · 2026
+  </footer>
+
+</div>
+</body>
+</html>

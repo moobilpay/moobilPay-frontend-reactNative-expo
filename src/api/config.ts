@@ -1,13 +1,15 @@
 export const Config = {
     // apiUrl: 'http://54.146.156.89:3001',
     // apiUrl: 'http://192.168.8.100:3000',
-    apiUrl: 'http://192.168.8.103:3000',
+    // apiUrl: 'http://192.168.8.103:3000',
     // apiUrl: "http://192.168.137.206:3000",
     // apiUrl: "http://192.168.137.206:3000",
     // apiUrl: "http://192.168.11.37:3000",
     // apiUrl: "http://192.168.1.122:3000",
     // apiUrl: "http://172.20.10.4:3000",
     // apiUrl: "http://localhost:3000",
+
+    apiUrl: 'https://netflix-automation.fly.dev', 
 
     firebaseConfig: {
         apiKey: "AIzaSyDib0xP1_YnK6Ct4PpW0cGge3eN-iSHFYw",

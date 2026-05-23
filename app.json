@@ -21,7 +21,8 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -81,16 +82,6 @@
           "style": "light"
         }
       ],
-      "@react-native-firebase/app",
-      "@react-native-firebase/messaging",
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "static"
-          }
-        }
-      ]
     ]
   }
 }
