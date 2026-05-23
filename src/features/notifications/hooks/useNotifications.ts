@@ -80,17 +80,10 @@ export function useNotifications() {
         }
     }, [lastNotificationResponse, user, router]);
 
+    // Listener foreground : monté dès le démarrage (indépendant de l'auth)
     useEffect(() => {
         if (!IS_NOTIFICATIONS_ENABLED) return;
 
-        registerForPushNotificationsAsync().then(token => {
-            setExpoPushToken(token);
-            if (token) {
-                checkAndSyncToken(token);
-            }
-        });
-
-        // Listener pour les notifications reçues quand l'app est OUVERTE au premier plan
         notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
             console.log('🔔 [NOTIFICATIONS] Reçue au premier plan !');
             console.log('📦 [NOTIFICATIONS] Payload premier plan:', JSON.stringify(notification.request.content, null, 2));
@@ -101,7 +94,21 @@ export function useNotifications() {
                 notificationListener.current.remove();
             }
         };
-    }, [checkAndSyncToken]);
+    }, []);
+
+    // Demande de permission + récupération du token : UNIQUEMENT après authentification
+    useEffect(() => {
+        if (!IS_NOTIFICATIONS_ENABLED) return;
+        if (!firebaseUser) return;
+        if (expoPushToken) return; // déjà récupéré
+
+        registerForPushNotificationsAsync().then(token => {
+            setExpoPushToken(token);
+            if (token) {
+                checkAndSyncToken(token);
+            }
+        });
+    }, [firebaseUser, expoPushToken, checkAndSyncToken]);
 
     useEffect(() => {
         if (user && firebaseUser && expoPushToken) {
@@ -145,10 +152,16 @@ export function useNotifications() {
 
         if (Device.isDevice || true) { // Forcé pour le debug
             try {
-                // Pour utiliser FCM directement avec le Firebase Admin SDK du backend,
-                // on a besoin du token NATIF de l'appareil, pas du token Expo.
-                token = (await Notifications.getDevicePushTokenAsync()).data;
-                console.log('✅ [NOTIFICATIONS] Native FCM Token récupéré:', token);
+                // Token FCM unifié Android + iOS (pont APNs→FCM géré par @react-native-firebase/messaging sur iOS)
+                const { default: messaging } = await import('@react-native-firebase/messaging');
+
+                if (Platform.OS === 'ios') {
+                    // Sur iOS il faut attendre l'enregistrement APNs avant de demander le token FCM
+                    await messaging().registerDeviceForRemoteMessages();
+                }
+
+                token = await messaging().getToken();
+                console.log('✅ [NOTIFICATIONS] FCM Token récupéré:', token);
             } catch (e: any) {
                 console.error('❌ [NOTIFICATIONS] Erreur lors de la récupération du token:', e.message);
             }

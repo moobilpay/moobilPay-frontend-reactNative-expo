@@ -16,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { handleGoogleSignIn } from "../../src/features/auth/services/googleAuthService";
+import { handleAppleSignIn } from "../../src/features/auth/services/appleAuthService";
 import { handleEmailAuth } from "../../src/features/auth/services/emailAuthService";
 import { AppLoader } from "../../src/components/AppLoader";
 import { useRouter } from "expo-router";
@@ -56,6 +57,19 @@ const LoginScreen: React.FC = () => {
     setLoadingMessage("Connexion Google...");
     setAuthLoading(true);
     const result = await handleGoogleSignIn();
+    setAuthLoading(false);
+
+    if (result.success) {
+      router.push('/(tabs)');
+    } else if (result.error && result.error !== "Connexion annulée") {
+      Alert.alert("Erreur de connexion", result.error);
+    }
+  };
+
+  const handleApple = async () => {
+    setLoadingMessage("Connexion Apple...");
+    setAuthLoading(true);
+    const result = await handleAppleSignIn();
     setAuthLoading(false);
 
     if (result.success) {
@@ -229,12 +243,19 @@ const LoginScreen: React.FC = () => {
                 <Text style={styles.socialLabel}>Google</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.socialCell} activeOpacity={0.72}>
-                <View style={styles.socialIcon}>
-                  <Ionicons name="logo-apple" size={22} color="#fff" />
-                </View>
-                <Text style={styles.socialLabel}>Apple</Text>
-              </TouchableOpacity>
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity
+                  style={styles.socialCell}
+                  activeOpacity={0.72}
+                  onPress={handleApple}
+                  disabled={authLoading}
+                >
+                  <View style={styles.socialIcon}>
+                    <Ionicons name="logo-apple" size={22} color="#fff" />
+                  </View>
+                  <Text style={styles.socialLabel}>Apple</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={styles.altMethods}>
