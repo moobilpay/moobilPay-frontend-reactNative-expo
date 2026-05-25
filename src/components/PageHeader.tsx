@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 interface PageHeaderProps {
   // Layout par défaut (titre + icône + sous-titre/amount + stats à droite)
@@ -15,6 +16,9 @@ interface PageHeaderProps {
     label: string;
   };
   rightElement?: React.ReactNode;
+
+  // 'gradient' (par défaut) ou 'blur' (transparent + flou comme la tab bar)
+  variant?: 'gradient' | 'blur';
 
   // Slot custom : si fourni, remplace tout le contenu par défaut
   children?: React.ReactNode;
@@ -29,16 +33,26 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   amount,
   totalStats,
   rightElement,
+  variant = 'gradient',
   children,
 }) => {
+  const isBlur = variant === 'blur';
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={GRADIENT_COLORS}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
+    <View style={[styles.container, isBlur && styles.containerBlur]}>
+      {isBlur ? (
+        Platform.OS === 'ios' ? (
+          <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFillObject} />
+        ) : (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.85)' }]} />
+        )
+      ) : (
+        <LinearGradient
+          colors={GRADIENT_COLORS}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+      )}
       <SafeAreaView edges={['top']} style={styles.safe}>
         <View style={styles.content}>
           {children ?? (
@@ -75,6 +89,12 @@ const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
     zIndex: 10,
+  },
+  containerBlur: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
   },
   safe: {
     paddingBottom: 22,

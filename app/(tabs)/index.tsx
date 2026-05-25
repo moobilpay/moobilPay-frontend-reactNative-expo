@@ -21,12 +21,15 @@ import { Config } from "../../src/api/config";
 import { usePaymentSocket } from "../../src/features/payment/hooks/usePaymentSocket";
 import { storage } from "../../src/utils/storage";
 import { PageHeader } from "../../src/components/PageHeader";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const headerHeight = insets.top + 72; // safe area + hauteur du contenu (searchbar ~56 + paddings)
   const [selectedFilter, setSelectedFilter] = useState("all");
 
   // ── États des données ──
@@ -164,14 +167,14 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <PageHeader>
+      <PageHeader variant="blur">
         <View style={styles.headerRow}>
           {/* Barre de recherche */}
           <View style={styles.searchBar}>
-            <Ionicons name="search-outline" size={20} color="rgba(255,255,255,0.7)" />
+            <Ionicons name="search-outline" size={20} color="rgba(15,23,42,0.55)" />
             <TextInput
               placeholder="Rechercher..."
-              placeholderTextColor="rgba(255,255,255,0.5)"
+              placeholderTextColor="rgba(15,23,42,0.4)"
               style={styles.searchInput}
             />
           </View>
@@ -182,7 +185,7 @@ export default function HomeScreen() {
               style={styles.actionIcon}
               onPress={() => router.push('/notifications')}
             >
-              <Ionicons name="notifications-outline" size={22} color="#fff" />
+              <Ionicons name="notifications-outline" size={22} color="#0f172a" />
               <View style={styles.badge} />
             </TouchableOpacity>
             <TouchableOpacity
@@ -201,7 +204,7 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingTop: headerHeight, paddingBottom: 120 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => fetchActivations(true)} />
         }
@@ -482,7 +485,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
     </View>
   );
 }
@@ -502,7 +505,9 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(15,23,42,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.08)',
     height: 46,
     borderRadius: 14,
     paddingHorizontal: 16,
@@ -511,7 +516,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 14,
   },
   headerActions: {
@@ -522,7 +527,9 @@ const styles = StyleSheet.create({
   actionIcon: {
     width: 44,
     height: 44,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(15,23,42,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.08)',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -536,14 +543,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#dc2626',
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: '#1a1a2e',
+    borderColor: '#fff',
   },
   avatarContainer: {
     width: 44,
     height: 44,
     borderRadius: 22,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(15,23,42,0.12)',
     overflow: 'hidden',
   },
   avatar: {

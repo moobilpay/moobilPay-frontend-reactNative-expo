@@ -21,6 +21,7 @@ export default function TabLayout() {
           {
             height: Platform.OS === 'android' ? 65 + insets.bottom : undefined,
             paddingBottom: Platform.OS === 'android' ? 8 + insets.bottom : 8,
+            paddingHorizontal: 12,
           }
         ],
         tabBarLabelStyle: styles.tabLabel,
@@ -99,5 +100,6 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 10,
     fontWeight: '600',
+    paddingHorizontal: 2,
   },
 });
