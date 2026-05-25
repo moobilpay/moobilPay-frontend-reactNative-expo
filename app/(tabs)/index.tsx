@@ -9,7 +9,6 @@ import {
   Image,
   Dimensions,
   StatusBar,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
@@ -21,6 +20,7 @@ import { useAuth } from "../../src/features/auth/context/AuthContext";
 import { Config } from "../../src/api/config";
 import { usePaymentSocket } from "../../src/features/payment/hooks/usePaymentSocket";
 import { storage } from "../../src/utils/storage";
+import { PageHeader } from "../../src/components/PageHeader";
 
 const { width } = Dimensions.get("window");
 
@@ -164,39 +164,31 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ─── CUSTOM HOME HEADER ─── */}
-      <View style={styles.header}>
-        <LinearGradient
-          colors={["#230f0f", "#2e1a1a", "#3e1616"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerBg}
-        />
-        <SafeAreaView style={styles.headerInner}>
-          <View style={styles.headerRow}>
-            {/* Barre de recherche */}
-            <View style={styles.searchBar}>
-              <Ionicons name="search-outline" size={20} color="rgba(255,255,255,0.7)" />
-              <TextInput
-                placeholder="Rechercher..."
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                style={styles.searchInput}
-              />
-            </View>
+      <PageHeader>
+        <View style={styles.headerRow}>
+          {/* Barre de recherche */}
+          <View style={styles.searchBar}>
+            <Ionicons name="search-outline" size={20} color="rgba(255,255,255,0.7)" />
+            <TextInput
+              placeholder="Rechercher..."
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              style={styles.searchInput}
+            />
+          </View>
 
-            {/* Actions */}
-            <View style={styles.headerActions}>
-              <TouchableOpacity 
-                style={styles.actionIcon}
-                onPress={() => router.push('/notifications')}
-              >
-                <Ionicons name="notifications-outline" size={22} color="#fff" />
-                <View style={styles.badge} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.avatarContainer}
-                onPress={() => router.push('/settings')}
-              >
+          {/* Actions */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.actionIcon}
+              onPress={() => router.push('/notifications')}
+            >
+              <Ionicons name="notifications-outline" size={22} color="#fff" />
+              <View style={styles.badge} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.avatarContainer}
+              onPress={() => router.push('/settings')}
+            >
                 <Image
                   source={{ uri: user?.photoURL || "https://via.placeholder.com/100" }}
                   style={styles.avatar}
@@ -204,10 +196,9 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </SafeAreaView>
-      </View>
+      </PageHeader>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
@@ -500,19 +491,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
-  },
-  header: {
-    height: 125,
-    position: 'relative',
-    zIndex: 10,
-  },
-  headerBg: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  headerInner: {
-    flex: 1,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
   },
   headerRow: {
     flexDirection: 'row',

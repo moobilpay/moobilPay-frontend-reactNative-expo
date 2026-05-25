@@ -145,8 +145,7 @@ export default function SettingsScreen() {
       <PageHeader
         title="Paramètres"
         subtitle="Gérez vos préférences et votre compte"
-        icon="settings" 
-        variant="premium"
+        icon="settings"
       />
 
       <ScrollView 

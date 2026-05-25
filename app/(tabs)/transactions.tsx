@@ -106,8 +106,7 @@ export default function TransactionsScreen() {
       <PageHeader 
         title="Mes Transactions" 
         amount={`${totalSpent.toLocaleString()} F`}
-        icon="card" 
-        variant="premium"
+        icon="card"
         totalStats={{ value: transactions.length.toString(), label: "TOTAL" }}
       />
       

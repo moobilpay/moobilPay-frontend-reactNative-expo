@@ -166,8 +166,7 @@ export default function NotificationsScreen() {
       <PageHeader 
         title="Mes Notifications" 
         subtitle={unreadCount > 0 ? `${unreadCount} nouvelles` : "À jour"} 
-        icon="notifications" 
-        variant="glass"
+        icon="notifications"
         rightElement={
           <TouchableOpacity 
             style={styles.headerButton}

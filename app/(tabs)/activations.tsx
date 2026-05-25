@@ -99,8 +99,7 @@ export default function ActivationsScreen() {
       <PageHeader 
         title="Mes Activations" 
         amount={`${stats.totalSpent.toLocaleString()} XAF`}
-        icon="sync-circle" 
-        variant="premium"
+        icon="sync-circle"
         totalStats={{ value: stats.total.toString(), label: "TOTAL" }}
       />
       

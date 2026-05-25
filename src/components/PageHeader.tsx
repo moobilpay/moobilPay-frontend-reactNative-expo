@@ -1,114 +1,68 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const { width } = Dimensions.get('window');
-
 interface PageHeaderProps {
-  title: string;
+  // Layout par défaut (titre + icône + sous-titre/amount + stats à droite)
+  title?: string;
   subtitle?: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  variant?: 'default' | 'premium' | 'glass';
+  icon?: keyof typeof Ionicons.glyphMap;
   amount?: string;
   totalStats?: {
     value: string;
     label: string;
   };
   rightElement?: React.ReactNode;
+
+  // Slot custom : si fourni, remplace tout le contenu par défaut
+  children?: React.ReactNode;
 }
 
-export const PageHeader: React.FC<PageHeaderProps> = ({ 
-  title, 
-  subtitle, 
-  icon, 
-  variant = 'default',
+const GRADIENT_COLORS = ['#230f0f', '#2e1a1a', '#3e1616'] as const;
+
+export const PageHeader: React.FC<PageHeaderProps> = ({
+  title,
+  subtitle,
+  icon,
   amount,
   totalStats,
-  rightElement 
+  rightElement,
+  children,
 }) => {
-  if (variant === 'premium') {
-    return (
-      <View style={styles.premiumContainer}>
-        <LinearGradient
-          colors={["#230f0f", "#2e1a1a", "#3e1616"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.premiumBg}
-        />
-        <SafeAreaView edges={['top']} style={styles.premiumSafe}>
-          <View style={styles.premiumContent}>
-            <View style={styles.premiumHeaderRow}>
-              <View style={styles.premiumIconContainer}>
-                <Ionicons name={icon} size={32} color="#fff" />
-              </View>
-              <View style={styles.premiumInfo}>
-                <Text style={styles.premiumTitle}>{title}</Text>
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={GRADIENT_COLORS}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        <View style={styles.content}>
+          {children ?? (
+            <View style={styles.defaultRow}>
+              {icon && (
+                <View style={styles.iconContainer}>
+                  <Ionicons name={icon} size={32} color="#fff" />
+                </View>
+              )}
+              <View style={styles.info}>
+                {title && <Text style={styles.title}>{title}</Text>}
                 {amount ? (
-                  <Text style={styles.premiumAmount}>{amount}</Text>
+                  <Text style={styles.amount}>{amount}</Text>
                 ) : (
-                  subtitle && <Text style={styles.premiumSubtitle}>{subtitle}</Text>
+                  subtitle && <Text style={styles.subtitle}>{subtitle}</Text>
                 )}
               </View>
               {totalStats && (
-                <View style={styles.totalStatsContainer}>
-                  <Text style={styles.totalValue}>{totalStats.value}</Text>
-                  <Text style={styles.totalLabel}>{totalStats.label}</Text>
+                <View style={styles.statsContainer}>
+                  <Text style={styles.statsValue}>{totalStats.value}</Text>
+                  <Text style={styles.statsLabel}>{totalStats.label}</Text>
                 </View>
               )}
-            </View>
-          </View>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  if (variant === 'glass') {
-    return (
-      <View style={styles.glassContainer}>
-        <LinearGradient
-          colors={["#230f0f", "#2e1a1a", "#3e1616"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.glassBg}
-        />
-        <SafeAreaView edges={['top']} style={styles.glassSafe}>
-          <View style={styles.glassContent}>
-            <View style={styles.glassIconMain}>
-              <Ionicons name={icon} size={32} color="#fff" />
-            </View>
-            <View style={styles.glassTitles}>
-              <Text style={styles.glassTitle}>{title}</Text>
-              {subtitle && <Text style={styles.glassSubtitle}>{subtitle}</Text>}
-            </View>
-            {rightElement && (
-              <View style={styles.rightSide}>
-                {rightElement}
-              </View>
-            )}
-          </View>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.header}>
-      <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <View style={styles.card}>
-          <View style={styles.content}>
-            <View style={styles.iconContainer}>
-              <Ionicons name={icon} size={24} color="#dc2626" />
-            </View>
-            <View style={styles.info}>
-              <Text style={styles.title}>{title}</Text>
-              {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-            </View>
-          </View>
-          {rightElement && (
-            <View style={styles.rightSide}>
-              {rightElement}
+              {rightElement && <View style={styles.rightSide}>{rightElement}</View>}
             </View>
           )}
         </View>
@@ -118,158 +72,67 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 };
 
 const styles = StyleSheet.create({
-  // DEFAULT VARIANT
-  header: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    zIndex: 10,
-  },
-  safeArea: {
-    paddingBottom: 16,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: Platform.OS === 'android' ? 10 : 0,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(220, 38, 38, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  info: {
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1e293b',
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#64748b',
-    marginTop: 2,
-  },
-  rightSide: {
-    marginLeft: 10,
-  },
-
-  // PREMIUM VARIANT
-  premiumContainer: {
+  container: {
     overflow: 'hidden',
     zIndex: 10,
   },
-  premiumBg: {
-    ...StyleSheet.absoluteFillObject,
+  safe: {
+    paddingBottom: 22,
   },
-  premiumSafe: {
-    paddingBottom: 25,
-  },
-  premiumContent: {
+  content: {
     paddingHorizontal: 20,
-    marginTop: Platform.OS === 'android' ? 20 : 10,
+    marginTop: Platform.OS === 'android' ? 16 : 8,
   },
-  premiumHeaderRow: {
+  defaultRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  premiumIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
-  premiumInfo: {
+  info: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: 14,
   },
-  premiumTitle: {
-    color: 'white',
+  title: {
+    color: '#fff',
     fontSize: 20,
     fontWeight: '700',
   },
-  premiumAmount: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-    marginTop: 4,
-  },
-  premiumSubtitle: {
-    color: 'rgba(255, 255, 255, 0.8)',
+  subtitle: {
+    color: 'rgba(255, 255, 255, 0.78)',
     fontSize: 13,
+    marginTop: 2,
+  },
+  amount: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '700',
     marginTop: 4,
   },
-  totalStatsContainer: {
+  statsContainer: {
     alignItems: 'flex-end',
+    marginLeft: 10,
   },
-  totalValue: {
-    color: 'white',
-    fontSize: 24,
+  statsValue: {
+    color: '#fff',
+    fontSize: 22,
     fontWeight: '900',
   },
-  totalLabel: {
-    color: 'rgba(255, 255, 255, 0.8)',
+  statsLabel: {
+    color: 'rgba(255, 255, 255, 0.78)',
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-
-  // GLASS VARIANT (For Notifications - Matches header-glass from frontend)
-  glassContainer: {
-    overflow: 'hidden',
-    zIndex: 10,
-  },
-  glassBg: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  glassSafe: {
-    paddingBottom: 25,
-  },
-  glassContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: Platform.OS === 'android' ? 10 : 0,
-  },
-  glassIconMain: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  glassTitles: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  glassTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  glassSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 2,
+  rightSide: {
+    marginLeft: 10,
   },
 });
