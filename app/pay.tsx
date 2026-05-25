@@ -126,11 +126,36 @@ export default function ReabonnementScreen() {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         console.log('📱 [APP-STATE] Retour au premier plan ! Réveil du Turbo...');
         setRecoveryTrigger(prev => prev + 1);
+
+        // En plus du re-scan WebView, on demande la vérité à notre backend
+        // (qui interroge Digikuntz). Permet de capter l'annulation faite dans
+        // l'app Orange/MTN même si la WebView Flutterwave est devenue inutilisable.
+        if (transactionId && showPaymentModal && !isCancelling) {
+          (async () => {
+            try {
+              const res = await axios.get(`${Config.apiUrl}/api/payment/status/${transactionId}`, {
+                headers: { 'ngrok-skip-browser-warning': 'true' },
+              });
+              const realStatus = res.data?.status;
+              console.log(`🔍 [RESUME-STATUS-CHECK] Digikuntz dit: ${realStatus} (raw=${res.data?.rawStatus})`);
+              if (realStatus === 'failed' || realStatus === 'cancelled') {
+                console.log('❌ [RESUME-STATUS-CHECK] Annulation/échec confirmé côté provider, fermeture modale.');
+                cancelPayment();
+              } else if (realStatus === 'success') {
+                console.log('✅ [RESUME-STATUS-CHECK] Succès confirmé côté provider.');
+                // Le socket payment_validated devrait déjà arriver via le polling/webhook,
+                // mais on peut anticiper la fermeture si pas encore reçue.
+              }
+            } catch (e: any) {
+              console.warn('⚠️ [RESUME-STATUS-CHECK] Erreur:', e?.message);
+            }
+          })();
+        }
       }
       appState.current = nextAppState;
     });
     return () => subscription.remove();
-  }, []);
+  }, [transactionId, showPaymentModal, isCancelling]);
 
   const selectedPlan = plans.find((p) => p.id === selectedPlanId);
   const stepNumber = getStepNumber(currentPage, activeStep);

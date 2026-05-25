@@ -62,10 +62,13 @@ export default function PaymentBottomSheet({
   const webViewRef = useRef<WebView>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'failed' | 'success'>('idle');
 
-  // Détection du trigger de récupération (Réveil)
+  // Détection du trigger de récupération (Réveil) : on re-déclenche le check JS
+  // (au cas où la WebView aurait reçu du contenu utile entre temps).
+  // La détection plus fiable se fait côté pay.tsx via /api/payment/status
+  // car les liens Flutterwave deviennent inutilisables après une tentative.
   useEffect(() => {
-    if (isOpen && recoveryTrigger > 0 && webViewRef.current) {
-      console.log('🔄 [RECOVERY-BRIDGE] Réveil forcé de la WebView...');
+    if (isOpen && recoveryTrigger > 0 && webViewRef.current && !hasHandledResult.current) {
+      console.log('🔄 [RECOVERY-BRIDGE] Re-scan DOM de la WebView...');
       webViewRef.current.injectJavaScript('if(typeof check === "function") check(); true;');
     }
   }, [recoveryTrigger, isOpen]);
@@ -287,7 +290,10 @@ export default function PaymentBottomSheet({
                     if (hasHandledResult.current) return;
                     const url = navState.url.toLowerCase();
                     
-                    const failureIndicators = ['status=failed', 'status=cancelled', 'cancel', 'error'];
+                    const failureIndicators = [
+                      'status=failed', 'status=cancelled', 'status=canceled', 'status=closed',
+                      'cancel', 'canceled', 'closed', 'error', 'declined', 'rejected',
+                    ];
                     if (failureIndicators.some(i => url.includes(i))) {
                       console.log('❌ [TURBO-URL] Échec détecté !');
                       hasHandledResult.current = true;
@@ -333,7 +339,13 @@ export default function PaymentBottomSheet({
                         var text = document.body.innerText.toLowerCase();
                         var url = window.location.href.toLowerCase();
                         
-                        var fail = ["echoue", "échoué", "failed", "annulé", "annule", "error", "status=failed"];
+                        var fail = [
+                          "echoue", "échoué", "failed", "annulé", "annule", "annulee", "annulée",
+                          "canceled", "cancelled", "cancel", "closed", "error", "erreur",
+                          "rejected", "rejeté", "declined", "refusé", "refuse",
+                          "transaction failed", "transaction annulée", "payment cancelled",
+                          "status=failed"
+                        ];
                         var success = ["success", "approved", "completed", "done"];
                         
                         if (fail.some(function(k){ return text.indexOf(k)!==-1 || url.indexOf(k)!==-1})) {
