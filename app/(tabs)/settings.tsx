@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PageHeader } from '../../src/components/PageHeader';
@@ -75,41 +77,74 @@ export default function SettingsScreen() {
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
-  const handleLogout = async () => {
-    Alert.alert(
-      "Déconnexion",
-      "Êtes-vous sûr de vouloir vous déconnecter ?",
-      [
-        { text: "Annuler", style: "cancel" },
-        { 
-          text: "Déconnexion", 
-          style: "destructive",
-          onPress: async () => {
-            setIsLoggingOut(true);
-            try {
-              // Simuler un petit délai pour le loader
-              await new Promise(resolve => setTimeout(resolve, 1500));
-              await logout();
-              router.replace('/login');
-            } catch (error) {
-              Alert.alert("Erreur", "Impossible de se déconnecter.");
-            } finally {
-              setIsLoggingOut(false);
-            }
-          }
-        }
-      ]
-    );
+  const handleLogout = () => {
+    setConfirmVisible(true);
+  };
+
+  const confirmLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      setConfirmVisible(false);
+      router.replace('/login');
+    } catch (error) {
+      setIsLoggingOut(false);
+      setConfirmVisible(false);
+      Alert.alert("Erreur", "Impossible de se déconnecter.");
+    }
+  };
+
+  const cancelLogout = () => {
+    if (isLoggingOut) return;
+    setConfirmVisible(false);
   };
 
   return (
     <View style={styles.container}>
-      <AppLoader visible={isLoggingOut} message="Déconnexion en cours..." />
-      
-      <PageHeader 
-        title="Paramètres" 
-        subtitle="Gérez vos préférences et votre compte" 
+      <Modal
+        visible={confirmVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={cancelLogout}
+        statusBarTranslucent
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Déconnexion</Text>
+            <Text style={styles.modalMessage}>
+              Êtes-vous sûr de vouloir vous déconnecter ?
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnCancel]}
+                onPress={cancelLogout}
+                disabled={isLoggingOut}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalBtnCancelText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnDanger]}
+                onPress={confirmLogout}
+                disabled={isLoggingOut}
+                activeOpacity={0.8}
+              >
+                {isLoggingOut ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalBtnDangerText}>Déconnexion</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <PageHeader
+        title="Paramètres"
+        subtitle="Gérez vos préférences et votre compte"
         icon="settings" 
         variant="premium"
       />
@@ -329,5 +364,69 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#cbd5e1',
     marginTop: 4,
+  },
+
+  // Modal de confirmation déconnexion
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0f172a',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#475569',
+    textAlign: 'center',
+    marginBottom: 22,
+    lineHeight: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modalBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBtnCancel: {
+    backgroundColor: '#f1f5f9',
+  },
+  modalBtnCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  modalBtnDanger: {
+    backgroundColor: '#dc2626',
+  },
+  modalBtnDangerText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
