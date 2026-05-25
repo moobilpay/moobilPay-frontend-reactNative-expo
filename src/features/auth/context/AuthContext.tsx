@@ -1,9 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
+import axios from "axios";
 import { auth } from "../../../services/firebase";
 import { storage } from "../../../utils/storage";
 import { Users } from "../../../types";
 import { userFirestore } from "../services/userFirestore";
+import { Config } from "../../../api/config";
+import { getDeviceId } from "../../notifications/services/deviceId";
 
 interface AuthContextType {
   user: User | null;
@@ -74,6 +77,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = async () => {
     try {
+      // Best-effort: désenregistre ce device des push avant de signer out
+      if (user) {
+        try {
+          const deviceId = await getDeviceId();
+          const idToken = await user.getIdToken();
+          await axios.post(
+            `${Config.apiUrl}/api/user/push-token/remove`,
+            { deviceId },
+            { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` } },
+          );
+          console.log('🗑️ [AuthContext] push-token/remove OK pour ce device');
+        } catch (e: any) {
+          console.warn('⚠️ [AuthContext] push-token/remove échoué (on continue le logout):', e?.message);
+        }
+      }
+
       await auth.signOut();
       await storage.remove("user_data");
       setUser(null);

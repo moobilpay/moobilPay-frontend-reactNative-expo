@@ -2,11 +2,12 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
+import axios from 'axios';
 import { useAuth } from '../../auth/context/AuthContext';
-import { userFirestore } from '../../auth/services/userFirestore';
 import { storage } from '../../../utils/storage';
 import { useRouter } from 'expo-router';
-import Constants from 'expo-constants';
+import { Config } from '../../../api/config';
+import { getDeviceId } from '../services/deviceId';
 
 const IS_NOTIFICATIONS_ENABLED = Platform.OS !== 'web' && process.env.EXPO_PUBLIC_DISABLE_NOTIFICATIONS !== 'true';
 
@@ -46,14 +47,19 @@ export function useNotifications() {
                 return;
             }
 
-            const tokenType: 'ios' | 'android' = Platform.OS === 'ios' ? 'ios' : 'android';
-            if (user.fcmToken !== token || user.tokenType !== tokenType) {
-                console.log(`📤 [NOTIFICATIONS] Synchronisation du token (${tokenType}) avec le backend...`);
-                await userFirestore.updateUser({ ...user, fcmToken: token, tokenType }, firebaseUser);
-                await storage.remove('unsentFcmToken');
-            }
-        } catch (err) {
-            console.error('❌ [NOTIFICATIONS] Erreur synchro token:', err);
+            const platform: 'ios' | 'android' = Platform.OS === 'ios' ? 'ios' : 'android';
+            const deviceId = await getDeviceId();
+            const idToken = await firebaseUser.getIdToken();
+
+            console.log(`📤 [NOTIFICATIONS] push-token/add (${platform}, device=${deviceId.substring(0, 8)}...)`);
+            await axios.post(
+                `${Config.apiUrl}/api/user/push-token/add`,
+                { token, platform, deviceId },
+                { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` } },
+            );
+            await storage.remove('unsentFcmToken');
+        } catch (err: any) {
+            console.error('❌ [NOTIFICATIONS] Erreur synchro token:', err?.message || err);
         }
     }, [user, firebaseUser]);
 
@@ -119,11 +125,6 @@ export function useNotifications() {
         return () => clearTimeout(timer);
     }, [firebaseUser, user, checkAndSyncToken]);
 
-    useEffect(() => {
-        if (user && firebaseUser && expoPushToken) {
-            checkAndSyncToken(expoPushToken);
-        }
-    }, [user, firebaseUser, expoPushToken, checkAndSyncToken]);
 
     async function registerForPushNotificationsAsync() {
         if (!IS_NOTIFICATIONS_ENABLED) return undefined;

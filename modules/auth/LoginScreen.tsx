@@ -19,6 +19,7 @@ import { handleGoogleSignIn } from "../../src/features/auth/services/googleAuthS
 import { handleAppleSignIn } from "../../src/features/auth/services/appleAuthService";
 import { handleEmailAuth } from "../../src/features/auth/services/emailAuthService";
 import { AppLoader } from "../../src/components/AppLoader";
+import { useAuth } from "../../src/features/auth/context/AuthContext";
 import { useRouter } from "expo-router";
 
 const { width, height } = Dimensions.get("window");
@@ -26,6 +27,7 @@ const { width, height } = Dimensions.get("window");
 const LoginScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { setUserData } = useAuth();
 
   const heroBounce = useRef(new Animated.Value(-20)).current;
   const heroOpacity = useRef(new Animated.Value(0)).current;
@@ -60,6 +62,7 @@ const LoginScreen: React.FC = () => {
     setAuthLoading(false);
 
     if (result.success) {
+      if (result.userData) setUserData(result.userData);
       router.push('/(tabs)');
     } else if (result.error && result.error !== "Connexion annulée") {
       Alert.alert("Erreur de connexion", result.error);
@@ -73,6 +76,7 @@ const LoginScreen: React.FC = () => {
     setAuthLoading(false);
 
     if (result.success) {
+      if (result.userData) setUserData(result.userData);
       router.push('/(tabs)');
     } else if (result.error && result.error !== "Connexion annulée") {
       Alert.alert("Erreur de connexion", result.error);
@@ -91,6 +95,7 @@ const LoginScreen: React.FC = () => {
     setAuthLoading(false);
 
     if (result.success) {
+      if (result.userData) setUserData(result.userData);
       router.push('/(tabs)');
     } else if (result.error) {
       Alert.alert("Erreur d'authentification", result.error);

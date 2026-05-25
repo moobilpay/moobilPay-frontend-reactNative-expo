@@ -1,85 +1,85 @@
-----------------------------------------------------------------
-  MOOBILPAY - TODO LIST
-----------------------------------------------------------------
+# TODO List for MoobilPay Frontend
 
+## Design — Icônes optimisées
 
-DESIGN - Icones optimisees:
-  [ ] Creer android-icon-foreground.png
-      [ ] 1024x1024 px
-      [ ] Fond TRANSPARENT (obligatoire)
-      [ ] Logo centre avec safe zone ~1/6 des bords
-  [ ] Creer android-icon-monochrome.png
-      [ ] 1024x1024 px
-      [ ] Fond TRANSPARENT
-      [ ] Une seule couleur pure (ex: blanc), aucun degrade
-      [ ] Pour les "Icones a theme" Android 13+
-  [ ] Creer icon.png (icone generale)
-      [ ] 1024x1024 px
-      [ ] Aucune transparence, fond plein
-      [ ] Base pour App Store iOS (Apple refuse la transparence)
-  [ ] Mettre a jour adaptiveIcon dans app.json:
-        "adaptiveIcon": {
-          "backgroundColor": "#FFFFFF",
-          "foregroundImage": "./assets/android-icon-foreground.png",
-          "monochromeImage": "./assets/android-icon-monochrome.png"
-        }
+1. **Créer `android-icon-foreground.png`**
+   - Taille : 1024×1024 px
+   - Fond **TRANSPARENT** (obligatoire)
+   - Logo centré avec safe zone d'environ 1/6 des bords
 
+2. **Créer `android-icon-monochrome.png`**
+   - Taille : 1024×1024 px
+   - Fond **TRANSPARENT**
+   - Une seule couleur pure (ex: blanc), aucun dégradé
+   - Pour les "Icônes à thème" Android 13+
 
-FORCE UPDATE - Bloquer les versions obsoletes:
-  [ ] Recuperer la version actuelle (app.json ou Expo Constants)
-  [ ] Endpoint backend GET /api/config/version => version min requise
-  [ ] Appeler au demarrage de l'app
-  [ ] Si version < min: ecran de blocage avec lien direct au Store
+3. **Créer `icon.png` (icône générale)**
+   - Taille : 1024×1024 px
+   - Aucune transparence, fond plein (ex: blanc)
+   - Base pour l'App Store iOS (Apple refuse la transparence)
 
+4. **Mettre à jour `adaptiveIcon` dans `app.json`**
+   ```json
+   "adaptiveIcon": {
+     "backgroundColor": "#FFFFFF",
+     "foregroundImage": "./assets/android-icon-foreground.png",
+     "monochromeImage": "./assets/android-icon-monochrome.png"
+   }
+   ```
 
-AUTH - Apple Sign In sur Android:
-  Aujourd'hui: bouton cache sur Android + service retourne erreur + toast.
-  Pour l'activer un jour (flow OAuth web, pas natif):
-  [ ] Apple Developer: creer un Services ID separe pour le web
-  [ ] Configurer URL de retour Firebase:
-        https://mobilpay-c1872.firebaseapp.com/__/auth/handler
-  [ ] Firebase Console > Auth > Apple: remplir Services ID + cle .p8
-  [ ] Frontend Android: OAuth web via WebView
-      (signInWithRedirect ou expo-auth-session avec discovery Apple)
-  [ ] Reactiver le bouton Apple sur Android dans LoginScreen.tsx
-  [ ] Tester sur device Android reel
-  Priorite: faible (Apple guideline 4.8 ne s'applique qu'a iOS,
-  les users Android ont deja Google par defaut).
+## Force Update — Bloquer les versions obsolètes
 
+1. **Récupération de la version**
+   - Lire la version actuelle depuis `app.json` ou Expo Constants
 
-NOTIFICATIONS - Support multi-device:
-  Contexte: un user peut se connecter sur plusieurs appareils
-  (iPhone perso, iPhone pro, Android tablette, etc.).
-  fcmTokens et apnsTokens sont deja stockes en tableau cote backend,
-  mais le frontend remplace le meme slot - gerer proprement
-  l'ajout/retrait par device.
+2. **Endpoint backend**
+   - Créer `GET /api/config/version` qui renvoie la version minimale requise
 
-  Frontend:
-    [ ] Generer un deviceId persistant
-        (expo-secure-store ou expo-application getInstallationId)
-    [ ] L'envoyer a chaque sync: { fcmToken, tokenType, deviceId }
-    [ ] Au logout: POST /api/user/push-token/remove { deviceId }
-    [ ] Detecter refresh de token (APNs/FCM peut changer apres
-        reinstall/restore) => resync auto
+3. **Vérification au démarrage**
+   - Appeler l'endpoint dès le boot de l'app
+   - Si version actuelle < version min : afficher un écran de blocage avec lien direct vers le Store
 
-  Backend:
-    [ ] Refactor stockage: array de strings => array d'objets
-          Avant: fcmTokens: ["token1", "token2"]
-          Apres: pushTokens: [{
-            token, platform: "ios"|"android",
-            deviceId, lastSeen: timestamp
-          }]
-    [ ] Garder fcmTokens/apnsTokens read-only legacy pendant migration
-    [ ] Script de migration des donnees existantes
-    [ ] POST /api/user/push-token/add => upsert par deviceId
-    [ ] POST /api/user/push-token/remove => supprime par deviceId (logout)
-    [ ] Cleanup auto tokens invalides + purge lastSeen > 60 jours
-    [ ] sendPushNotification: boucler sur pushTokens, router par platform
+## Auth — Apple Sign In sur Android
 
-  Tests:
-    [ ] Connexion sur 2 iPhones meme compte => les 2 recoivent
-    [ ] Logout sur iPhone A => A ne recoit plus, B continue
-    [ ] Reinstall app sur iPhone A => ancien token remplace, pas duplique
+**État actuel :** bouton caché sur Android, service retourne erreur + toast.
 
+Pour l'activer (flow OAuth web, pas natif comme sur iOS) :
 
-----------------------------------------------------------------
+1. **Apple Developer**
+   - Créer un **Services ID** séparé pour le web
+   - Configurer l'URL de retour Firebase : `https://mobilpay-c1872.firebaseapp.com/__/auth/handler`
+
+2. **Firebase Console → Auth → Apple**
+   - Renseigner Services ID + clé `.p8`
+
+3. **Frontend Android**
+   - Implémenter OAuth web via WebView (`signInWithRedirect` ou `expo-auth-session` avec discovery Apple)
+   - Réactiver le bouton Apple sur Android dans `LoginScreen.tsx`
+
+4. **Tester sur device Android réel**
+
+> **Priorité : faible.** La guideline Apple 4.8 ne s'applique qu'à iOS, et les users Android ont Google par défaut.
+
+## Notifications Push — Cleanup restant
+
+Le multi-device propre est en place (`pushTokens: [{ token, platform, deviceId, lastSeen }]`
++ endpoints add/remove + logout cleanup). Reste :
+
+1. **Cron de cleanup**
+   - Purge auto des entrées `pushTokens` avec `lastSeen > 60 jours`
+   - Purge auto des tokens marqués invalides par APNs/FCM (via `tokensToDelete`)
+
+2. **Migration des anciens users**
+   - Script one-shot qui parcourt tous les users avec uniquement `fcmTokens` / `apnsTokens`
+     et les recopie dans `pushTokens` avec un `deviceId` "legacy-<hash>"
+   - Puis suppression des champs legacy après quelques semaines de stabilité
+
+3. **Refresh de token**
+   - Détecter quand iOS/FCM change le token (rare, après reinstall/restore)
+   - Re-trigger un sync auto
+
+### Tests à effectuer
+
+- Connexion sur 2 iPhones avec le même compte → les 2 reçoivent les notifs
+- Logout sur iPhone A → A ne reçoit plus, B continue
+- Reinstall app sur iPhone A → ancien deviceId écrasé, pas dupliqué
