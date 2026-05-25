@@ -27,9 +27,12 @@ export default function TabLayout() {
         tabBarLabelStyle: styles.tabLabel,
         tabBarBackground: () => (
           Platform.OS === 'ios' ? (
-            <BlurView intensity={80} style={StyleSheet.absoluteFill} tint="light" />
+            <>
+              <BlurView intensity={80} style={StyleSheet.absoluteFill} tint="light" />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.7)' }]} />
+            </>
           ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: '#ffffff' }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.92)' }]} />
           )
         ),
       }}

@@ -29,7 +29,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const headerHeight = insets.top + 72; // safe area + hauteur du contenu (searchbar ~56 + paddings)
+  const headerHeight = insets.top + 92; // safe area + hauteur contenu (searchbar ~56 + paddings) + marge
   const [selectedFilter, setSelectedFilter] = useState("all");
 
   // ── États des données ──
@@ -391,26 +391,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Actions rapides */}
-        <View style={styles.actionsGrid}>
-          {[
-            { id: "accounts", icon: "people-outline", label: "Comptes" },
-            { id: "help", icon: "help-circle-outline", label: "Aide" },
-            { id: "news", icon: "film-outline", label: "Actus film" },
-            { id: "share", icon: "share-social-outline", label: "Partager" },
-          ].map((item) => (
-            <TouchableOpacity key={item.id} style={styles.actionCard}>
-              <View style={styles.actionCardIcon}>
-                <Ionicons name={item.icon as any} size={22} color="#dc2626" />
-              </View>
-              <Text style={styles.actionCardLabel}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Séparateur */}
-        <View style={styles.subtleSeparator} />
-
         {/* Section Découvrir & Divertissement */}
         <View style={styles.discoverSection}>
           <View style={styles.sectionHeader}>
@@ -482,6 +462,26 @@ export default function HomeScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Séparateur */}
+        <View style={styles.subtleSeparator} />
+
+        {/* Actions rapides (en dernier) */}
+        <View style={styles.actionsGrid}>
+          {[
+            { id: "accounts", icon: "people-outline", label: "Comptes" },
+            { id: "help", icon: "help-circle-outline", label: "Aide" },
+            { id: "news", icon: "film-outline", label: "Actus film" },
+            { id: "share", icon: "share-social-outline", label: "Partager" },
+          ].map((item) => (
+            <TouchableOpacity key={item.id} style={styles.actionCard}>
+              <View style={styles.actionCardIcon}>
+                <Ionicons name={item.icon as any} size={22} color="#dc2626" />
+              </View>
+              <Text style={styles.actionCardLabel}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </ScrollView>
 
@@ -562,7 +562,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   filterSection: {
-    marginVertical: 20,
+    marginTop: 8,
+    marginBottom: 24,
   },
   filterRow: {
     paddingHorizontal: 20,
@@ -760,11 +761,12 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#e2e8f0',
     marginHorizontal: 20,
-    marginVertical: 24,
-    opacity: 0.6,
+    marginTop: 20,
+    opacity: 0.5,
   },
   sectionHeader: {
     paddingHorizontal: 20,
+    marginTop: 36,
     marginBottom: 16,
   },
   sectionTitleRow: {
@@ -871,7 +873,7 @@ const styles = StyleSheet.create({
   actionsGrid: {
     flexDirection: 'row',
     paddingHorizontal: 14,
-    marginTop: 20,
+    marginTop: 12,
     justifyContent: 'space-between',
   },
   actionCard: {
@@ -901,8 +903,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   discoverSection: {
-    marginTop: 10,
-    marginBottom: 20,
+    // Le marginTop est porté par sectionHeader pour un rythme cohérent
   },
   discoverGrid: {
     flexDirection: 'row',
