@@ -78,9 +78,6 @@ export async function handleGoogleSignIn(): Promise<GoogleSignInResult> {
                 email: firebaseUser.email ?? "",
                 password: ""
             },
-            isMarchand: false,
-            statistique: 100,
-            fastFoodId: ""
         };
 
         console.log("🔵 [GoogleAuth] Envoi au backend (POST /user)");

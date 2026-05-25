@@ -1,0 +1,85 @@
+----------------------------------------------------------------
+  MOOBILPAY - TODO LIST
+----------------------------------------------------------------
+
+
+DESIGN - Icones optimisees:
+  [ ] Creer android-icon-foreground.png
+      [ ] 1024x1024 px
+      [ ] Fond TRANSPARENT (obligatoire)
+      [ ] Logo centre avec safe zone ~1/6 des bords
+  [ ] Creer android-icon-monochrome.png
+      [ ] 1024x1024 px
+      [ ] Fond TRANSPARENT
+      [ ] Une seule couleur pure (ex: blanc), aucun degrade
+      [ ] Pour les "Icones a theme" Android 13+
+  [ ] Creer icon.png (icone generale)
+      [ ] 1024x1024 px
+      [ ] Aucune transparence, fond plein
+      [ ] Base pour App Store iOS (Apple refuse la transparence)
+  [ ] Mettre a jour adaptiveIcon dans app.json:
+        "adaptiveIcon": {
+          "backgroundColor": "#FFFFFF",
+          "foregroundImage": "./assets/android-icon-foreground.png",
+          "monochromeImage": "./assets/android-icon-monochrome.png"
+        }
+
+
+FORCE UPDATE - Bloquer les versions obsoletes:
+  [ ] Recuperer la version actuelle (app.json ou Expo Constants)
+  [ ] Endpoint backend GET /api/config/version => version min requise
+  [ ] Appeler au demarrage de l'app
+  [ ] Si version < min: ecran de blocage avec lien direct au Store
+
+
+AUTH - Apple Sign In sur Android:
+  Aujourd'hui: bouton cache sur Android + service retourne erreur + toast.
+  Pour l'activer un jour (flow OAuth web, pas natif):
+  [ ] Apple Developer: creer un Services ID separe pour le web
+  [ ] Configurer URL de retour Firebase:
+        https://mobilpay-c1872.firebaseapp.com/__/auth/handler
+  [ ] Firebase Console > Auth > Apple: remplir Services ID + cle .p8
+  [ ] Frontend Android: OAuth web via WebView
+      (signInWithRedirect ou expo-auth-session avec discovery Apple)
+  [ ] Reactiver le bouton Apple sur Android dans LoginScreen.tsx
+  [ ] Tester sur device Android reel
+  Priorite: faible (Apple guideline 4.8 ne s'applique qu'a iOS,
+  les users Android ont deja Google par defaut).
+
+
+NOTIFICATIONS - Support multi-device:
+  Contexte: un user peut se connecter sur plusieurs appareils
+  (iPhone perso, iPhone pro, Android tablette, etc.).
+  fcmTokens et apnsTokens sont deja stockes en tableau cote backend,
+  mais le frontend remplace le meme slot - gerer proprement
+  l'ajout/retrait par device.
+
+  Frontend:
+    [ ] Generer un deviceId persistant
+        (expo-secure-store ou expo-application getInstallationId)
+    [ ] L'envoyer a chaque sync: { fcmToken, tokenType, deviceId }
+    [ ] Au logout: POST /api/user/push-token/remove { deviceId }
+    [ ] Detecter refresh de token (APNs/FCM peut changer apres
+        reinstall/restore) => resync auto
+
+  Backend:
+    [ ] Refactor stockage: array de strings => array d'objets
+          Avant: fcmTokens: ["token1", "token2"]
+          Apres: pushTokens: [{
+            token, platform: "ios"|"android",
+            deviceId, lastSeen: timestamp
+          }]
+    [ ] Garder fcmTokens/apnsTokens read-only legacy pendant migration
+    [ ] Script de migration des donnees existantes
+    [ ] POST /api/user/push-token/add => upsert par deviceId
+    [ ] POST /api/user/push-token/remove => supprime par deviceId (logout)
+    [ ] Cleanup auto tokens invalides + purge lastSeen > 60 jours
+    [ ] sendPushNotification: boucler sur pushTokens, router par platform
+
+  Tests:
+    [ ] Connexion sur 2 iPhones meme compte => les 2 recoivent
+    [ ] Logout sur iPhone A => A ne recoit plus, B continue
+    [ ] Reinstall app sur iPhone A => ancien token remplace, pas duplique
+
+
+----------------------------------------------------------------

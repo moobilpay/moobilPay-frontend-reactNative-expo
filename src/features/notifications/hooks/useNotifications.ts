@@ -28,6 +28,7 @@ export function useNotifications() {
     const router = useRouter();
     const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
     const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+    const registrationAttempted = useRef(false);
 
     // Hook Expo ultra-fiable pour capter le clic sur une notif (app fermée ou en arrière-plan)
     // Désactivé sur le web de manière sûre pour éviter les crashs de rendu
@@ -98,18 +99,25 @@ export function useNotifications() {
     }, []);
 
     // Demande de permission + récupération du token : UNIQUEMENT après authentification
+    // ET après que l'UI ait navigué sur le home. Ref-guard pour ne firer qu'une seule fois
+    // (sinon les multiples changements de `user` (cache puis API) reset le timer en boucle).
     useEffect(() => {
         if (!IS_NOTIFICATIONS_ENABLED) return;
-        if (!firebaseUser) return;
-        if (expoPushToken) return; // déjà récupéré
+        if (!firebaseUser || !user) return;
+        if (registrationAttempted.current) return;
 
-        registerForPushNotificationsAsync().then(token => {
-            setExpoPushToken(token);
-            if (token) {
-                checkAndSyncToken(token);
-            }
-        });
-    }, [firebaseUser, expoPushToken, checkAndSyncToken]);
+        registrationAttempted.current = true;
+        const timer = setTimeout(() => {
+            registerForPushNotificationsAsync().then(token => {
+                setExpoPushToken(token);
+                if (token) {
+                    checkAndSyncToken(token);
+                }
+            });
+        }, 1500);
+
+        return () => clearTimeout(timer);
+    }, [firebaseUser, user, checkAndSyncToken]);
 
     useEffect(() => {
         if (user && firebaseUser && expoPushToken) {

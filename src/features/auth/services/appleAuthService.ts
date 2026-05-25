@@ -1,5 +1,5 @@
 import { OAuthProvider, signInWithCredential } from "firebase/auth";
-import { Platform } from "react-native";
+import { Alert, Platform, ToastAndroid } from "react-native";
 import * as Crypto from "expo-crypto";
 import { auth } from "../../../services/firebase";
 import { userFirestore } from "./userFirestore";
@@ -12,9 +12,20 @@ export interface AppleSignInResult {
     error?: string;
 }
 
+const notifyUnavailable = (message: string) => {
+    if (Platform.OS === "android") {
+        ToastAndroid.show(message, ToastAndroid.LONG);
+    } else {
+        Alert.alert("Apple Sign In", message);
+    }
+};
+
 export async function handleAppleSignIn(): Promise<AppleSignInResult> {
     if (Platform.OS !== "ios") {
-        return { success: false, isNewUser: false, error: "Sign in with Apple est disponible uniquement sur iOS." };
+        const msg = "Sign in with Apple est disponible uniquement sur iOS.";
+        console.warn(`🍎 [AppleAuth] ${msg}`);
+        notifyUnavailable(msg);
+        return { success: false, isNewUser: false, error: msg };
     }
 
     try {
@@ -22,7 +33,10 @@ export async function handleAppleSignIn(): Promise<AppleSignInResult> {
 
         const isAvailable = await AppleAuthentication.isAvailableAsync();
         if (!isAvailable) {
-            return { success: false, isNewUser: false, error: "Sign in with Apple non disponible sur cet appareil." };
+            const msg = "Sign in with Apple non disponible sur cet appareil.";
+            console.warn(`🍎 [AppleAuth] ${msg}`);
+            notifyUnavailable(msg);
+            return { success: false, isNewUser: false, error: msg };
         }
 
         // Nonce: Apple signe le hash SHA-256, Firebase vérifie avec le rawNonce
@@ -79,9 +93,6 @@ export async function handleAppleSignIn(): Promise<AppleSignInResult> {
             uid: firebaseUser.uid,
             id: firebaseUser.uid,
             infos: { nom, prenom, age: 0, numero: 0, email, password: "" },
-            isMarchand: false,
-            statistique: 100,
-            fastFoodId: "",
         };
 
         console.log("🍎 [AppleAuth] Création du profil backend");

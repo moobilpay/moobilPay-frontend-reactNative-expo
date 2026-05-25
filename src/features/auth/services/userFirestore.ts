@@ -15,7 +15,12 @@ export const userFirestore = {
             });
             const data = response.data.data;
             return data && data.infos ? data : null;
-        } catch (error) {
+        } catch (error: any) {
+            // 404 = utilisateur inexistant en BD (nouveau compte) → cas normal, pas une erreur
+            if (error?.response?.status === 404) {
+                console.log("ℹ️ [getUser] Utilisateur pas encore en BD (404 attendu pour nouveau user)");
+                return null;
+            }
             console.error("Error fetching user via API:", error);
             return null;
         }

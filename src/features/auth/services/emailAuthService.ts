@@ -65,9 +65,6 @@ export async function handleEmailAuth(email: string, password: string): Promise<
                 email: firebaseUser.email ?? "",
                 password: "" // On ne stocke pas le password en clair
             },
-            isMarchand: false,
-            statistique: 100,
-            fastFoodId: ""
         };
 
         await userFirestore.createUser(newUser, firebaseUser);

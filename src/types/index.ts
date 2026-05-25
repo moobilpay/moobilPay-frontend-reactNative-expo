@@ -11,9 +11,6 @@ export interface Users {
     uid: string;
     id?: string;
     infos: UsersInfos;
-    isMarchand: boolean;
-    statistique: number;
-    fastFoodId: string;
     fcmToken?: string;
     tokenType?: 'ios' | 'android';
 }
