@@ -14,6 +14,7 @@ interface AuthContextType {
   loading: boolean;
   setUserData: (data: Users | null) => void;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -102,14 +103,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const deleteAccount = async () => {
+    if (!user) {
+      throw new Error("Aucun utilisateur connecté");
+    }
+
+    const idToken = await user.getIdToken();
+    const response = await axios.delete(
+      `${Config.apiUrl}/api/user/delete-account`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+      }
+    );
+
+    if (!response.data?.success) {
+      throw new Error(response.data?.message || "Échec de la suppression");
+    }
+
+    console.log("✅ [AuthContext] Compte supprimé côté serveur");
+
+    try {
+      await auth.signOut();
+    } catch (e) {
+      console.warn("⚠️ [AuthContext] signOut après deleteAccount:", e);
+    }
+
+    await storage.remove("user_data");
+    setUser(null);
+    setUserData(null);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ 
-        user, 
-        userData, 
-        loading, 
+      value={{
+        user,
+        userData,
+        loading,
         setUserData: handleUpdateUserData,
-        logout 
+        logout,
+        deleteAccount
       }}
     >
       {children}

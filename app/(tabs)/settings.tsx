@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PageHeader } from '../../src/components/PageHeader';
@@ -72,12 +73,17 @@ const SettingItem: React.FC<SettingItemProps> = ({
 );
 
 export default function SettingsScreen() {
-  const { logout } = useAuth();
+  const { logout, deleteAccount } = useAuth();
   const router = useRouter();
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
+
+  const [deleteVisible, setDeleteVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const REQUIRED_CONFIRM = 'SUPPRIMER';
 
   const handleLogout = () => {
     setConfirmVisible(true);
@@ -99,6 +105,48 @@ export default function SettingsScreen() {
   const cancelLogout = () => {
     if (isLoggingOut) return;
     setConfirmVisible(false);
+  };
+
+  const handleDeleteAccount = () => {
+    setDeleteConfirmText('');
+    setDeleteVisible(true);
+  };
+
+  const cancelDelete = () => {
+    if (isDeleting) return;
+    setDeleteVisible(false);
+    setDeleteConfirmText('');
+  };
+
+  const confirmDelete = async () => {
+    if (deleteConfirmText.trim().toUpperCase() !== REQUIRED_CONFIRM) {
+      Alert.alert(
+        'Confirmation requise',
+        `Tapez exactement "${REQUIRED_CONFIRM}" pour confirmer.`
+      );
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      setDeleteVisible(false);
+      setDeleteConfirmText('');
+      setIsDeleting(false);
+      Alert.alert(
+        'Compte supprimé',
+        'Votre compte et toutes vos données ont été supprimés définitivement.',
+        [{ text: 'OK', onPress: () => router.replace('/login') }]
+      );
+    } catch (error: any) {
+      setIsDeleting(false);
+      Alert.alert(
+        'Erreur',
+        error?.response?.data?.message ||
+          error?.message ||
+          'Impossible de supprimer le compte. Réessayez ou contactez le support.'
+      );
+    }
   };
 
   return (
@@ -135,6 +183,77 @@ export default function SettingsScreen() {
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.modalBtnDangerText}>Déconnexion</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={deleteVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={cancelDelete}
+        statusBarTranslucent
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.deleteIconWrap}>
+              <Ionicons name="warning" size={32} color="#ef4444" />
+            </View>
+            <Text style={styles.modalTitle}>Supprimer mon compte</Text>
+            <Text style={styles.modalMessage}>
+              Cette action est <Text style={{ fontWeight: '700' }}>définitive et irréversible</Text>.{'\n\n'}
+              Toutes vos données seront supprimées :{'\n'}
+              • Votre profil et identifiants{'\n'}
+              • Vos abonnements suivis{'\n'}
+              • Votre historique de paiements{'\n'}
+              • Vos notifications{'\n\n'}
+              Pour confirmer, tapez{' '}
+              <Text style={{ fontWeight: '700', color: '#ef4444' }}>{REQUIRED_CONFIRM}</Text>{' '}
+              ci-dessous.
+            </Text>
+
+            <TextInput
+              style={styles.deleteInput}
+              value={deleteConfirmText}
+              onChangeText={setDeleteConfirmText}
+              placeholder={REQUIRED_CONFIRM}
+              placeholderTextColor="#cbd5e1"
+              autoCapitalize="characters"
+              autoCorrect={false}
+              editable={!isDeleting}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnCancel]}
+                onPress={cancelDelete}
+                disabled={isDeleting}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalBtnCancelText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalBtn,
+                  styles.modalBtnDanger,
+                  deleteConfirmText.trim().toUpperCase() !== REQUIRED_CONFIRM && {
+                    opacity: 0.5,
+                  },
+                ]}
+                onPress={confirmDelete}
+                disabled={
+                  isDeleting ||
+                  deleteConfirmText.trim().toUpperCase() !== REQUIRED_CONFIRM
+                }
+                activeOpacity={0.8}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalBtnDangerText}>Supprimer</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -259,6 +378,7 @@ export default function SettingsScreen() {
               label="Supprimer le compte"
               description="Cette action est irréversible"
               type="arrow"
+              onPress={handleDeleteAccount}
             />
           </View>
         </View>
@@ -427,5 +547,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#fff',
+  },
+  deleteIconWrap: {
+    alignSelf: 'center',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  deleteInput: {
+    height: 48,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: '#0f172a',
+    fontWeight: '600',
+    marginBottom: 18,
+    backgroundColor: '#f8fafc',
+    textAlign: 'center',
+    letterSpacing: 2,
   },
 });
