@@ -82,6 +82,14 @@
           }
         },
         {
+          "client_id": "583417452577-rjspujkb08e9iu15vigt00hv40gbdc6c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.moobilpay.com",
+            "certificate_hash": "1d86d35257ca537f9b5e0cf40e10914f2054c0a4"
+          }
+        },
+        {
           "client_id": "583417452577-elkimar69os44l6qgagqek2arurgmtbc.apps.googleusercontent.com",
           "client_type": 3
         }

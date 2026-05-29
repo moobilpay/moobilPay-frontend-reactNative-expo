@@ -458,7 +458,7 @@ export default function ReabonnementScreen() {
         }
       );
 
-      if (!paymentRes.data.success || !paymentRes.data.paymentLink) {
+      if (!paymentRes.data.success || (!paymentRes.data.paymentLink && !paymentRes.data.skipPayment)) {
         console.error('❌ [PAYMENT-ERROR] Échec initiation:', paymentRes.data);
         setShowPaymentModal(false);
         setIsInitializing(false);
@@ -466,12 +466,26 @@ export default function ReabonnementScreen() {
         return;
       }
 
-      const { paymentLink: link, transactionId: txId, planActivationId: paId } = paymentRes.data;
+      const { paymentLink: link, transactionId: txId, planActivationId: paId, skipPayment } = paymentRes.data;
       console.log(`✅ [PAYMENT-SUCCESS] IDs reçus: Tx=${txId}, Activation=${paId}`);
       console.log(`🔗 [PAYMENT-SUCCESS] Link: ${link}`);
-      
+
       setPlanActivationId(paId);
-      openModal(link, txId);
+      setTransactionId(txId);
+
+      if (skipPayment) {
+        // MODE REVIEW APPLE : le backend a sauté le paiement réel.
+        // On n'ouvre pas le webview : on ferme l'init et on passe direct à
+        // l'étape Traitement. L'activation (statut + socket activationcreated)
+        // est déclenchée par subscription/init lancé ci-dessous.
+        console.log('🍏 [APPLE-REVIEW] skipPayment reçu → webview sauté, passage à l\'étape Traitement.');
+        setIsInitializing(false);
+        setShowPaymentModal(false);
+        setVerificationStep(2);
+        setCurrentPage(5);
+      } else {
+        openModal(link, txId);
+      }
 
       console.log('📝 [SUBSCRIPTION] Lancement initSubscription en background...');
       const idToken2 = await user?.getIdToken();
