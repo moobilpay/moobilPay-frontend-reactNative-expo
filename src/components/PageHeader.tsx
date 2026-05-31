@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
+import { useFocusEffect } from 'expo-router';
 
 interface PageHeaderProps {
   // Layout par défaut (titre + icône + sous-titre/amount + stats à droite)
@@ -37,8 +39,21 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   children,
 }) => {
   const isBlur = variant === 'blur';
+  const statusBarStyle = isBlur ? 'dark' : 'light';
+  const insets = useSafeAreaInsets();
+
+  // Réapplique le style à chaque focus : au retour sur un écran déjà monté,
+  // le <StatusBar> ne se redéclenche pas, il faut le forcer manuellement.
+  useFocusEffect(
+    React.useCallback(() => {
+      setStatusBarStyle(statusBarStyle);
+    }, [statusBarStyle])
+  );
+
   return (
     <View style={[styles.container, isBlur && styles.containerBlur]}>
+      {/* Header clair (blur) -> icônes sombres ; header sombre (gradient) -> icônes claires */}
+      <StatusBar style={statusBarStyle} />
       {isBlur ? (
         Platform.OS === 'ios' ? (
           <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFillObject} />
@@ -53,7 +68,9 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
           style={StyleSheet.absoluteFillObject}
         />
       )}
-      <SafeAreaView edges={['top']} style={styles.safe}>
+      {/* paddingTop via useSafeAreaInsets (synchrone) au lieu de SafeAreaView,
+          qui rendait d'abord à 0 puis se corrigeait -> saut de layout au montage. */}
+      <View style={[styles.safe, { paddingTop: insets.top }]}>
         <View style={styles.content}>
           {children ?? (
             <View style={styles.defaultRow}>
@@ -80,7 +97,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             </View>
           )}
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 };

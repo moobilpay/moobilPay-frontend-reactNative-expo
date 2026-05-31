@@ -7,13 +7,8 @@
     "icon": "./assets/icon3.png",
     "userInterfaceStyle": "automatic",
     "scheme": "moobilpay",
-    "splash": {
-      "image": "./assets/icon3.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "userInterfaceStyle": "dark",
       "bundleIdentifier": "com.moobilpay.com",
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -74,6 +69,15 @@
       "expo-secure-store",
       "expo-web-browser",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icon3.png",
+          "imageWidth": 150,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/logoblanc.png",
@@ -88,7 +92,7 @@
           "behavior": "overlay-swipe",
           "style": "light"
         }
-      ],
+      ]
     ]
   }
 }

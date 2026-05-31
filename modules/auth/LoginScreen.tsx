@@ -11,6 +11,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   ScrollView,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -133,14 +134,12 @@ const LoginScreen: React.FC = () => {
           ]}
         >
           <View style={styles.logoPill}>
-            <LinearGradient
-              colors={["#c41a1a", "#7c0d0d"]}
-              style={styles.logoPillGrad}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="phone-portrait-outline" size={16} color="#fff" />
-            </LinearGradient>
+          
+              <Image
+                source={require("../../assets/logoblanc.png")}
+                style={styles.logoPillImage}
+                resizeMode="contain"
+              /> 
             <Text style={styles.logoPillName}>MoobilPay</Text>
           </View>
 
@@ -339,14 +338,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    gap: 10,
+    gap: 2,
   },
   logoPillGrad: {
-    width: 32,
-    height: 32,
-    borderRadius: 9,
+    width: 40,
+    height: 40,
+    borderRadius: 50,
     alignItems: "center",
     justifyContent: "center",
+  },
+  logoPillImage: {
+    width: 50,
+    height: 50,
   },
   logoPillName: {
     fontSize: 15,

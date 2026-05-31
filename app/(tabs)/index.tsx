@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
-  StatusBar,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
@@ -484,8 +483,6 @@ export default function HomeScreen() {
           ))}
         </View>
       </ScrollView>
-
-      <StatusBar barStyle="dark-content" />
     </View>
   );
 }

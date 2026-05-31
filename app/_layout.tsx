@@ -10,7 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNotifications } from '../src/features/notifications/hooks/useNotifications';
 
 // Empêche le splash screen de se cacher automatiquement
-SplashScreen.preventAutoHideAsync();
+// (peut échouer si le splash natif n'est pas encore enregistré pour la vue)
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function AppInitializer({ onSplashHidden }: { onSplashHidden: () => void }) {
   const { user, userData, loading } = useAuth();
@@ -84,12 +85,17 @@ export default function RootLayout() {
       <AuthProvider>
         <SocketProvider>
           <AppInitializer onSplashHidden={() => setSplashHidden(true)} />
-          <StatusBar 
-            style={splashHidden ? "light" : "dark"} 
-            translucent={true} 
-            backgroundColor="transparent" 
+          {/* Barre d'état par défaut pour les écrans à fond sombre (login, onboarding, pay).
+              Les écrans avec PageHeader la surchargent eux-mêmes selon leur variante. */}
+          <StatusBar
+            style="light"
+            translucent={true}
+            backgroundColor="transparent"
           />
-          <Stack screenOptions={{ headerShown: false }} />
+          {/* gestureEnabled: false -> bloque le swipe retour partout, sauf sur "pay" */}
+          <Stack screenOptions={{ headerShown: false, gestureEnabled: false }}>
+            <Stack.Screen name="pay" options={{ gestureEnabled: true }} />
+          </Stack>
         </SocketProvider>
       </AuthProvider>
     </SafeAreaProvider>
