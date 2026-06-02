@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/features/auth/context/AuthContext';
 import { SocketProvider } from '../src/context/SocketContext';
+import { ReviewModeProvider } from '../src/context/ReviewModeContext';
 import * as SplashScreen from 'expo-splash-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNotifications } from '../src/features/notifications/hooks/useNotifications';
@@ -84,6 +85,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <SocketProvider>
+         <ReviewModeProvider>
           <AppInitializer onSplashHidden={() => setSplashHidden(true)} />
           {/* Barre d'état par défaut pour les écrans à fond sombre (login, onboarding, pay).
               Les écrans avec PageHeader la surchargent eux-mêmes selon leur variante. */}
@@ -96,6 +98,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, gestureEnabled: false }}>
             <Stack.Screen name="pay" options={{ gestureEnabled: true }} />
           </Stack>
+         </ReviewModeProvider>
         </SocketProvider>
       </AuthProvider>
     </SafeAreaProvider>

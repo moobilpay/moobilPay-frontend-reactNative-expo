@@ -2,8 +2,9 @@
 
 **URL cible** : https://moobilpay.com/politique-confidentialite.html
 **Objectif** : passer la review Apple (Guideline 5.1.1) + cohérence avec les
-6 données déclarées dans App Privacy (Name, Email, Phone Number, User ID,
-Device ID, Other Financial Info).
+5 données déclarées dans App Privacy (Name, Email, Phone Number, User ID,
+Device ID). « Other Financial Info » a été RETIRÉ d'App Privacy (l'app n'est
+pas un service financier, c'est un tracker de budget personnel).
 
 ---
 
@@ -59,10 +60,9 @@ contenu) :
 <h2>1. Introduction</h2>
 <p>
   MoobilPay est une application mobile de <strong>suivi et de gestion
-  d'abonnements personnels</strong>, conçue pour les utilisateurs de Mobile
-  Money en Afrique. La présente politique explique quelles données nous
-  collectons, comment nous les utilisons, avec qui nous les partageons et
-  quels sont vos droits.
+  d'abonnements personnels</strong>. La présente politique explique quelles
+  données nous collectons, comment nous les utilisons, avec qui nous les
+  partageons et quels sont vos droits.
 </p>
 <p>
   En utilisant MoobilPay, vous acceptez les pratiques décrites dans cette
@@ -85,8 +85,7 @@ contenu) :
   <li><strong>Adresse e-mail</strong> — pour la création du compte et la
       communication.</li>
   <li><strong>Numéro de téléphone</strong> — utilisé pour identifier votre
-      compte Mobile Money (MTN, Orange) et pour le suivi de vos
-      paiements.</li>
+      compte et faciliter le suivi de vos abonnements.</li>
   <li><strong>Mot de passe</strong> — uniquement si vous choisissez l'auth
       par e-mail/mot de passe ; il est chiffré côté Firebase et jamais
       visible par nous.</li>
@@ -100,10 +99,9 @@ contenu) :
       automatiquement pour rattacher vos données à votre compte.</li>
   <li><strong>Jeton de notification push (FCM / APNs)</strong> — pour vous
       envoyer des rappels d'échéance.</li>
-  <li><strong>Historique de suivi des paiements</strong> : montants, devises,
-      opérateur (MTN, Orange), statut, horodatage. Ces enregistrements
-      reflètent vos paiements personnels et servent à votre suivi
-      budgétaire.</li>
+  <li><strong>Historique de suivi des abonnements</strong> : montants, devises,
+      statut, horodatage. Ces enregistrements reflètent vos abonnements
+      personnels et servent à votre suivi budgétaire.</li>
   <li><strong>Identifiants techniques</strong> : modèle d'appareil, version
       iOS / Android, version de l'application, adresse IP.</li>
 </ul>
@@ -125,11 +123,11 @@ contenu) :
       compte</td><td>Exécution du contrat</td></tr>
   <tr><td>Nom, prénom</td><td>Personnalisation de
       l'expérience</td><td>Exécution du contrat</td></tr>
-  <tr><td>Numéro de téléphone</td><td>Identification Mobile Money, suivi
-      des paiements</td><td>Exécution du contrat</td></tr>
+  <tr><td>Numéro de téléphone</td><td>Identification du compte, suivi
+      des abonnements</td><td>Exécution du contrat</td></tr>
   <tr><td>Jeton FCM</td><td>Envoi de rappels et
       notifications</td><td>Consentement (révocable)</td></tr>
-  <tr><td>Historique d'abonnements / paiements</td><td>Suivi budgétaire
+  <tr><td>Historique d'abonnements</td><td>Suivi budgétaire
       personnel</td><td>Exécution du contrat</td></tr>
   <tr><td>Données techniques (IP, modèle, OS)</td><td>Sécurité,
       diagnostic</td><td>Intérêt légitime</td></tr>
@@ -164,13 +162,11 @@ contenu) :
       backend.</li>
 </ul>
 <p>
-  Les services Mobile Money cités dans l'application (MTN Mobile Money,
-  Orange Money) et les services d'abonnement que vous suivez (Netflix,
-  Spotify, etc.) sont mentionnés à titre informatif pour vous permettre
-  d'identifier vos propres paiements et abonnements. <strong>MoobilPay
-  n'est affilié à aucun de ces services, n'agit pas comme intermédiaire
-  technique pour leur compte, et ne stocke aucun identifiant de connexion
-  à ces services.</strong>
+  Les services d'abonnement que vous suivez (Netflix, Spotify, etc.) sont
+  mentionnés à titre informatif pour vous permettre d'identifier vos
+  propres abonnements. <strong>MoobilPay n'est affilié à aucun de ces
+  services, n'agit pas comme intermédiaire technique pour leur compte, et
+  ne stocke aucun identifiant de connexion à ces services.</strong>
 </p>
 
 <h2>7. Transferts internationaux</h2>
@@ -187,7 +183,7 @@ contenu) :
   <li><strong>Compte utilisateur</strong> : conservé tant que le compte est
       actif. Supprimé dans un délai maximum de <strong>30 jours</strong>
       après votre demande.</li>
-  <li><strong>Historique de suivi de paiements</strong> : conservé tant que
+  <li><strong>Historique de suivi des abonnements</strong> : conservé tant que
       le compte est actif ; supprimé avec le compte.</li>
   <li><strong>Logs techniques</strong> : <strong>90 jours</strong>
       maximum.</li>
@@ -256,11 +252,10 @@ contenu) :
 <h2>13. Marques tierces</h2>
 <p>
   Les noms et marques des services tiers cités dans l'application (Netflix,
-  Spotify, MTN, Orange, etc.) sont la propriété de leurs détenteurs
-  respectifs. Ils sont utilisés à titre purement descriptif pour permettre
-  aux utilisateurs d'identifier leurs propres abonnements et paiements.
-  MoobilPay n'a aucun partenariat, affiliation ou lien commercial avec ces
-  services.
+  Spotify, etc.) sont la propriété de leurs détenteurs respectifs. Ils sont
+  utilisés à titre purement descriptif pour permettre aux utilisateurs
+  d'identifier leurs propres abonnements. MoobilPay n'a aucun partenariat,
+  affiliation ou lien commercial avec ces services.
 </p>
 
 <h2>14. Modifications</h2>
@@ -292,8 +287,10 @@ dans la politique ci-dessus :
       unique (UID Firebase) »
 - [x] **Device ID (FCM token)** → section 3.2 « Jeton de notification push
       (FCM / APNs) »
-- [x] **Other Financial Info** → section 3.2 « Historique de suivi des
-      paiements »
+
+⚠️ **Other Financial Info** : RETIRÉ d'App Privacy. L'app ne collecte pas
+d'info financière au sens d'Apple (pas de carte/compte bancaire). Les montants
+d'abonnement sont de simples données de suivi budgétaire.
 
 ✅ Tout est couvert.
 

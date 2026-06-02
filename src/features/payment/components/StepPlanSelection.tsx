@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +16,8 @@ interface Props {
   plans: NetflixPlan[];
   selectedPlanId: string;
   loading: boolean;
+  // Requête en cours après clic sur "Continuer" (affiche un loader sur le bouton).
+  submitting?: boolean;
   onSelectPlan: (id: string) => void;
   onContinue: () => void;
 }
@@ -30,6 +33,7 @@ export default function StepPlanSelection({
   plans,
   selectedPlanId,
   loading,
+  submitting = false,
   onSelectPlan,
   onContinue,
 }: Props) {
@@ -141,10 +145,21 @@ export default function StepPlanSelection({
       )}
 
       {/* Continue button */}
-      <TouchableOpacity style={styles.continueBtn} onPress={onContinue} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={styles.continueBtn}
+        onPress={onContinue}
+        activeOpacity={0.85}
+        disabled={submitting}
+      >
         <LinearGradient colors={['#ef4444', '#dc2626']} style={sharedStyles.gradientBtn}>
-          <Text style={sharedStyles.btnText}>Continuer</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
+          {submitting ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Text style={sharedStyles.btnText}>Continuer</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </>
+          )}
         </LinearGradient>
       </TouchableOpacity>
     </ScrollView>

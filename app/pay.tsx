@@ -104,6 +104,10 @@ export default function ReabonnementScreen() {
   // ── Activation ──
   const [verificationStep, setVerificationStep] = useState(0);
 
+  // ── Mode review Apple (servi par le backend au GET des plans) ──
+  // Quand true, on court-circuite tout le flux de paiement.
+  const [appleReviewMode, setAppleReviewMode] = useState(false);
+
   // Refs pour les listeners socket (évite de dépendre des états dans le useEffect)
   const currentPageRef = useRef(currentPage);
   useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
@@ -184,6 +188,8 @@ export default function ReabonnementScreen() {
         const premium = res.data.data.find((p: NetflixPlan) => p.id === 'premium');
         setSelectedPlanId(premium?.id || res.data.data[0].id);
       }
+      // Mode review : court-circuite tout le flux de paiement par la suite.
+      setAppleReviewMode(res.data.appleReviewMode === true);
     } catch (err) {
       console.error('[pay] fetchPlans:', err);
     } finally {
@@ -356,7 +362,76 @@ export default function ReabonnementScreen() {
   };
 
   // ─── Étape 1 → 1.5 ───────────────────────────────────────────────────────
-  const handlePlanContinue = () => setCurrentPage(1.5);
+  const handlePlanContinue = () => {
+    // Mode review Apple : on saute TOUT le flux (Netflix, méthode, détails,
+    // webview, traitement) et on va directement à l'étape Reçu (page 6).
+    if (appleReviewMode) {
+      handleReviewSkip();
+      return;
+    }
+    setCurrentPage(1.5);
+  };
+
+  // ─── Mode review : court-circuit direct vers le Reçu ─────────────────────
+  // Réutilise le même mécanisme que le skip webview : le backend (APPLE_REVIEW_MODE)
+  // crée l'activation + transaction factice via init-mobile-money (skipPayment),
+  // puis on lance subscription/init et on affiche le Reçu sans aucun écran de paiement.
+  const handleReviewSkip = async () => {
+    setIsLoading(true);
+    try {
+      const idToken = await user?.getIdToken();
+      // En mode review, l'utilisateur n'a pas saisi ses identifiants Netflix ni
+      // son numéro : on fournit des valeurs factices valides (le paiement est
+      // de toute façon sauté côté backend via APPLE_REVIEW_MODE).
+      const reviewEmail = netflixEmail || user?.email || 'review@moobilpay.com';
+      const reviewPassword = netflixPassword || 'review';
+      const reviewPhone = phoneNumber || '696080087';
+
+      const initRes = await axios.post(
+        `${Config.apiUrl}/api/payment/init-mobile-money`,
+        {
+          numeroOM: reviewPhone,
+          phone: reviewPhone,
+          email: reviewEmail,
+          motDePasse: reviewPassword,
+          typeDePlan: selectedPlanId,
+          userId: user?.uid,
+          amount: selectedPlan?.price ?? 0,
+        },
+        { headers: { 'ngrok-skip-browser-warning': 'true', Authorization: `Bearer ${idToken}` } }
+      );
+
+      const { transactionId: txId, planActivationId: paId } = initRes.data || {};
+      setTransactionId(txId || '');
+      setPlanActivationId(paId || '');
+
+      // Lance l'abonnement en arrière-plan (le backend émet payment_validated/activationcreated).
+      const idToken2 = await user?.getIdToken();
+      axios.post(
+        `${Config.apiUrl}/api/subscription/init`,
+        {
+          typeDePlan: selectedPlanId,
+          email: reviewEmail,
+          motDePasse: reviewPassword,
+          planActivationId: paId,
+          userId: user?.uid,
+          transactionId: txId,
+          amount: selectedPlan?.price ?? 0,
+          numeroOM: reviewPhone,
+          useOrchestration: false,
+        },
+        { headers: { 'ngrok-skip-browser-warning': 'true', Authorization: `Bearer ${idToken2}` } }
+      ).catch((err) => console.log('[review] subscription/init (ignoré):', err?.message));
+
+      // Mode review : pas d'écran Reçu, on renvoie directement à l'accueil.
+      router.replace('/(tabs)/');
+    } catch (err: any) {
+      console.error('[review] handleReviewSkip:', err?.message);
+      Alert.alert('Erreur', "Impossible de finaliser. Réessayez.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // ─── Étape 1.5 → 2 (step 1) — API credentials ────────────────────────────
   const handleNetflixInfoContinue = async () => {
@@ -604,6 +679,7 @@ export default function ReabonnementScreen() {
           plans={plans}
           selectedPlanId={selectedPlanId}
           loading={plansLoading}
+          submitting={isLoading}
           onSelectPlan={setSelectedPlanId}
           onContinue={handlePlanContinue}
         />

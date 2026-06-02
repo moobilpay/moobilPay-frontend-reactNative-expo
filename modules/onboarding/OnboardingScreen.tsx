@@ -12,6 +12,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useReviewMode } from "../../src/context/ReviewModeContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -23,6 +24,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [fadeAnim] = useState(new Animated.Value(1));
   const insets = useSafeAreaInsets();
+  const { reviewMode } = useReviewMode();
   const totalSteps = 3;
 
   const animateTransition = () => {
@@ -103,12 +105,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
         <View style={styles.paymentScene}>
           <View style={styles.paymentCards}>
             <View style={[styles.paymentCard, styles.mtn]}>
-              <Text style={styles.cardLogo}>MTN</Text>
-              <Text style={styles.cardSignal}>📶</Text>
+              <Text style={styles.cardLogo}>{reviewMode ? "Budget" : "MTN"}</Text>
+              <Text style={styles.cardSignal}>{reviewMode ? "📊" : "📶"}</Text>
             </View>
             <View style={[styles.paymentCard, styles.orange]}>
-              <Text style={styles.cardLogo}>Orange</Text>
-              <Text style={styles.cardSignal}>📱</Text>
+              <Text style={styles.cardLogo}>{reviewMode ? "Suivi" : "Orange"}</Text>
+              <Text style={styles.cardSignal}>{reviewMode ? "🔔" : "📱"}</Text>
             </View>
           </View>
           <View style={styles.securityBadge}>
@@ -191,22 +193,28 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
                   {currentStep === 1
                     ? "Bienvenue sur MoobilPay"
                     : currentStep === 2
-                      ? "Paiements Sécurisés"
-                      : "Activation Instantanée"}
+                      ? (reviewMode ? "Tout au même endroit" : "Paiements Sécurisés")
+                      : (reviewMode ? "Rappels intelligents" : "Activation Instantanée")}
                 </Text>
                 <Text style={styles.stepSubtitle}>
                   {currentStep === 1
-                    ? "Votre passerelle vers Netflix"
+                    ? (reviewMode ? "Gérez vos abonnements" : "Votre passerelle vers Netflix")
                     : currentStep === 2
-                      ? "MTN & Orange Money"
-                      : "Netflix prêt en 2 minutes"}
+                      ? (reviewMode ? "Une vue claire de votre budget" : "MTN & Orange Money")
+                      : (reviewMode ? "Ne ratez plus une échéance" : "Netflix prêt en 2 minutes")}
                 </Text>
                 <Text style={styles.stepDescription}>
                   {currentStep === 1
-                    ? "Accédez instantanément à des milliers de films et séries. Payez votre abonnement Netflix en quelques clics avec MTN ou Orange Money."
+                    ? (reviewMode
+                        ? "Suivez et organisez tous vos abonnements personnels en un seul endroit, simplement."
+                        : "Accédez instantanément à des milliers de films et séries. Payez votre abonnement Netflix en quelques clics avec MTN ou Orange Money.")
                     : currentStep === 2
-                      ? "Utilisez votre compte MTN Money ou Orange Money pour payer en toute sécurité. Vos données sont protégées et vos transactions cryptées."
-                      : "Votre compte Netflix est activé immédiatement après le paiement. Profitez de vos films et séries sur tous vos appareils !"}
+                      ? (reviewMode
+                          ? "Visualisez vos dépenses récurrentes et gardez le contrôle de votre budget mensuel."
+                          : "Utilisez votre compte MTN Money ou Orange Money pour payer en toute sécurité. Vos données sont protégées et vos transactions cryptées.")
+                      : (reviewMode
+                          ? "Recevez des rappels personnalisés avant chaque échéance pour mieux planifier."
+                          : "Votre compte Netflix est activé immédiatement après le paiement. Profitez de vos films et séries sur tous vos appareils !")}
                 </Text>
               </View>
             </Animated.View>

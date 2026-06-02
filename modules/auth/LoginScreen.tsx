@@ -22,6 +22,7 @@ import { handleEmailAuth } from "../../src/features/auth/services/emailAuthServi
 import { AppLoader } from "../../src/components/AppLoader";
 import { useAuth } from "../../src/features/auth/context/AuthContext";
 import { useRouter } from "expo-router";
+import { useReviewMode } from "../../src/context/ReviewModeContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -29,6 +30,7 @@ const LoginScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { setUserData } = useAuth();
+  const { reviewMode } = useReviewMode();
 
   const heroBounce = useRef(new Animated.Value(-20)).current;
   const heroOpacity = useRef(new Animated.Value(0)).current;
@@ -144,23 +146,23 @@ const LoginScreen: React.FC = () => {
           </View>
 
           <View style={styles.heroTitle}>
-            <Text style={styles.heroLine1}>Payez votre</Text>
+            <Text style={styles.heroLine1}>{reviewMode ? "Suivez vos" : "Payez votre"}</Text>
             <View style={styles.heroAccentRow}>
-              <Text style={styles.heroLine2}>Netflix</Text>
+              <Text style={styles.heroLine2}>{reviewMode ? "abonnements" : "Netflix"}</Text>
               <View style={styles.heroRedUnderline} />
             </View>
-            <Text style={styles.heroLine3}>depuis l'Afrique.</Text>
+            <Text style={styles.heroLine3}>{reviewMode ? "en un seul endroit." : "depuis l'Afrique."}</Text>
           </View>
 
           <View style={styles.partnerBadges}>
             <View style={styles.badge}>
               <View style={[styles.badgeDot, { backgroundColor: "#ffcc00" }]} />
-              <Text style={styles.badgeLabel}>MTN Money</Text>
+              <Text style={styles.badgeLabel}>{reviewMode ? "Rappels" : "MTN Money"}</Text>
             </View>
             <View style={styles.badgeSep} />
             <View style={styles.badge}>
               <View style={[styles.badgeDot, { backgroundColor: "#ff6600" }]} />
-              <Text style={styles.badgeLabel}>Orange Money</Text>
+              <Text style={styles.badgeLabel}>{reviewMode ? "Budget" : "Orange Money"}</Text>
             </View>
           </View>
         </Animated.View>
