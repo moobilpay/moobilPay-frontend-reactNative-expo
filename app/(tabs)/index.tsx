@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
 
-        backgroundColor: 'hsla(210, 40%, 98%, 1.00)',
+        // backgroundColor: 'hsla(210, 40%, 98%, 1.00)',
     // backgroundColor: '#eef0f4',
         backgroundColor: 'hsla(210, 40%, 97%, 1.00)',
   },
