@@ -17,6 +17,7 @@ import { PageHeader } from '../../src/components/PageHeader';
 import { useAuth } from '../../src/features/auth/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { AppLoader } from '../../src/components/AppLoader';
+import { useReviewMode } from '../../src/context/ReviewModeContext';
 
 interface SettingItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -75,8 +76,10 @@ const SettingItem: React.FC<SettingItemProps> = ({
 export default function SettingsScreen() {
   const { logout, deleteAccount } = useAuth();
   const router = useRouter();
+  const { reviewMode } = useReviewMode();
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
 
@@ -87,6 +90,15 @@ export default function SettingsScreen() {
 
   const handleLogout = () => {
     setConfirmVisible(true);
+  };
+
+  // Pour les entrées pas encore implémentées : feedback clair au clic
+  // (évite les boutons "morts" rejetés par Apple — Guideline 2.1).
+  const handleComingSoon = () => {
+    Alert.alert(
+      'Bientôt disponible',
+      "Cette fonctionnalité sera disponible dans une prochaine mise à jour."
+    );
   };
 
   const confirmLogout = async () => {
@@ -272,88 +284,96 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>GÉNÉRAL</Text>
-          <View style={styles.card}>
-            <SettingItem
-              icon="language-outline"
-              color="#3b82f6"
-              label="Langue"
-              description="Choisissez votre langue d'affichage"
-              type="select"
-              rightText="🇫🇷 Français"
-            />
-            <View style={styles.separator} />
-            <SettingItem
-              icon="moon-outline"
-              color="#8b5cf6"
-              label="Mode Sombre"
-              description="Réduisez la fatigue oculaire"
-              type="toggle"
-              value={darkMode}
-              onValueChange={setDarkMode}
-            />
-          </View>
-        </View>
+        {!reviewMode && (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>GÉNÉRAL</Text>
+              <View style={styles.card}>
+                <SettingItem
+                  icon="language-outline"
+                  color="#3b82f6"
+                  label="Langue"
+                  description="Choisissez votre langue d'affichage"
+                  type="select"
+                  rightText="🇫🇷 Français"
+                />
+                <View style={styles.separator} />
+                <SettingItem
+                  icon="moon-outline"
+                  color="#8b5cf6"
+                  label="Mode Sombre"
+                  description="Réduisez la fatigue oculaire"
+                  type="toggle"
+                  value={darkMode}
+                  onValueChange={setDarkMode}
+                />
+              </View>
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>NOTIFICATIONS</Text>
-          <View style={styles.card}>
-            <SettingItem
-              icon="notifications-outline"
-              color="#ef4444"
-              label="Push Notifications"
-              description="Recevez des alertes en temps réel"
-              type="toggle"
-              value={notifications}
-              onValueChange={setNotifications}
-            />
-          </View>
-        </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>NOTIFICATIONS</Text>
+              <View style={styles.card}>
+                <SettingItem
+                  icon="notifications-outline"
+                  color="#ef4444"
+                  label="Push Notifications"
+                  description="Recevez des alertes en temps réel"
+                  type="toggle"
+                  value={notifications}
+                  onValueChange={setNotifications}
+                />
+              </View>
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>SÉCURITÉ</Text>
-          <View style={styles.card}>
-            <SettingItem
-              icon="lock-closed-outline"
-              color="#10b981"
-              label="Mot de passe"
-              description="Changez votre mot de passe"
-              type="arrow"
-            />
-            <View style={styles.separator} />
-            <SettingItem
-              icon="finger-print-outline"
-              color="#06b6d4"
-              label="Biométrie"
-              description="Utilisez TouchID ou FaceID"
-              type="toggle"
-              value={true}
-            />
-          </View>
-        </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>SÉCURITÉ</Text>
+              <View style={styles.card}>
+                <SettingItem
+                  icon="lock-closed-outline"
+                  color="#10b981"
+                  label="Mot de passe"
+                  description="Changez votre mot de passe"
+                  type="arrow"
+                  onPress={handleComingSoon}
+                />
+                <View style={styles.separator} />
+                <SettingItem
+                  icon="finger-print-outline"
+                  color="#06b6d4"
+                  label="Biométrie"
+                  description="Utilisez TouchID ou FaceID"
+                  type="toggle"
+                  value={biometricEnabled}
+                  onValueChange={setBiometricEnabled}
+                />
+              </View>
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>MON COMPTE</Text>
-          <View style={styles.card}>
-            <SettingItem
-              icon="person-outline"
-              color="#3b82f6"
-              label="Profil"
-              description="Gérez vos informations personnelles"
-              type="arrow"
-            />
-            <View style={styles.separator} />
-            <SettingItem
-              icon="card-outline"
-              color="#06b6d4"
-              label="Abonnement"
-              description="Consultez votre plan actuel"
-              type="arrow"
-              rightText="Premium"
-            />
-          </View>
-        </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>MON COMPTE</Text>
+              <View style={styles.card}>
+                <SettingItem
+                  icon="person-outline"
+                  color="#3b82f6"
+                  label="Profil"
+                  description="Gérez vos informations personnelles"
+                  type="arrow"
+                  onPress={handleComingSoon}
+                />
+                <View style={styles.separator} />
+                <SettingItem
+                  icon="card-outline"
+                  color="#06b6d4"
+                  label="Abonnement"
+                  description="Consultez votre plan actuel"
+                  type="arrow"
+                  rightText="Premium"
+                  onPress={handleComingSoon}
+                />
+              </View>
+            </View>
+          </>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>SESSION</Text>

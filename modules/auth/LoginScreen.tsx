@@ -30,7 +30,7 @@ const LoginScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { setUserData } = useAuth();
-  const { reviewMode } = useReviewMode();
+  const { reviewMode, ready } = useReviewMode();
 
   const heroBounce = useRef(new Animated.Value(-20)).current;
   const heroOpacity = useRef(new Animated.Value(0)).current;
@@ -275,13 +275,21 @@ const LoginScreen: React.FC = () => {
                 <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.2)" />
               </TouchableOpacity>
 
-              <View style={styles.altDivider} />
+              {ready && !reviewMode && (
+                <>
+                  <View style={styles.altDivider} />
 
-              <TouchableOpacity style={styles.altBtn} activeOpacity={0.75}>
-                <Ionicons name="chatbubble-outline" size={17} color="rgba(255,255,255,0.55)" />
-                <Text style={styles.altBtnText}>Continuer avec SMS</Text>
-                <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.2)" />
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.altBtn}
+                    activeOpacity={0.75}
+                    onPress={() => Alert.alert('Bientôt disponible', "La connexion par SMS sera disponible dans une prochaine mise à jour.")}
+                  >
+                    <Ionicons name="chatbubble-outline" size={17} color="rgba(255,255,255,0.55)" />
+                    <Text style={styles.altBtnText}>Continuer avec SMS</Text>
+                    <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.2)" />
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </>
         )}

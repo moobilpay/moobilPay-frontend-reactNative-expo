@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PageHeader } from '../../src/components/PageHeader';
 import axios from 'axios';
@@ -149,7 +149,10 @@ export default function ActivationsScreen() {
         {/* Section Historique */}
         <View style={styles.historyHeader}>
           <Text style={styles.sectionTitle}>HISTORIQUE</Text>
-          <TouchableOpacity style={styles.filterBtn}>
+          <TouchableOpacity
+            style={styles.filterBtn}
+            onPress={() => Alert.alert('Bientôt disponible', "Le filtrage sera disponible dans une prochaine mise à jour.")}
+          >
             <Ionicons name="funnel-outline" size={14} color="#64748b" />
             <Text style={styles.filterBtnText}>Filtrer</Text>
           </TouchableOpacity>

@@ -10,6 +10,7 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,6 +22,7 @@ import { usePaymentSocket } from "../../src/features/payment/hooks/usePaymentSoc
 import { storage } from "../../src/utils/storage";
 import { PageHeader } from "../../src/components/PageHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useReviewMode } from "../../src/context/ReviewModeContext";
 
 const { width } = Dimensions.get("window");
 
@@ -30,6 +32,15 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = insets.top + 92; // safe area + hauteur contenu (searchbar ~56 + paddings) + marge
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const { reviewMode } = useReviewMode();
+
+  // Entrées pas encore implémentées : feedback clair au clic (Apple Guideline 2.1).
+  const handleComingSoon = () => {
+    Alert.alert(
+      'Bientôt disponible',
+      "Cette fonctionnalité sera disponible dans une prochaine mise à jour."
+    );
+  };
 
   // ── États des données ──
   const [activations, setActivations] = useState<any[]>([]);
@@ -168,15 +179,34 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <PageHeader variant="blur">
         <View style={styles.headerRow}>
-          {/* Barre de recherche */}
-          <View style={styles.searchBar}>
-            <Ionicons name="search-outline" size={20} color="rgba(15,23,42,0.55)" />
-            <TextInput
-              placeholder="Rechercher..."
-              placeholderTextColor="rgba(15,23,42,0.4)"
-              style={styles.searchInput}
-            />
-          </View>
+          {/* Barre de recherche ou Logo */}
+          {!reviewMode ? (
+            <TouchableOpacity
+              style={styles.searchBar}
+              activeOpacity={0.7}
+              onPress={handleComingSoon}
+            >
+              <Ionicons name="search-outline" size={20} color="rgba(15,23,42,0.55)" />
+              <TextInput
+                placeholder="Rechercher..."
+                placeholderTextColor="rgba(15,23,42,0.4)"
+                style={styles.searchInput}
+                editable={false}
+                pointerEvents="none"
+              />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Image
+                source={require("../../assets/logoblanc.png")}
+                style={{ width: 36, height: 36, tintColor: '#dc2626' }}
+                resizeMode="contain"
+              />
+              <Text style={{ fontSize: 22, fontWeight: '800', color: '#dc2626', letterSpacing: -0.5 }}>
+                Moobil<Text style={{ color: '#0f172a' }}>Pay</Text>
+              </Text>
+            </View>
+          )}
 
           {/* Actions */}
           <View style={styles.headerActions}>
@@ -191,11 +221,19 @@ export default function HomeScreen() {
               style={styles.avatarContainer}
               onPress={() => router.push('/settings')}
             >
+              {user?.photoURL ? (
                 <Image
-                  source={{ uri: user?.photoURL || "https://via.placeholder.com/100" }}
+                  source={{ uri: user.photoURL }}
                   style={styles.avatar}
                 />
-              </TouchableOpacity>
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarInitial}>
+                    {(user?.email?.charAt(0) || 'U').toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
             </View>
           </View>
       </PageHeader>
@@ -209,43 +247,45 @@ export default function HomeScreen() {
         }
       >
         {/* Chips de filtrage */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          style={styles.filterSection}
-          contentContainerStyle={styles.filterRow}
-        >
-          {[
-            { id: "all", icon: "apps-outline", label: "Tous" },
-            { id: "streaming", icon: "play-circle-outline", label: "Streaming" },
-            { id: "music", icon: "musical-notes-outline", label: "Musique" },
-            { id: "gaming", icon: "game-controller-outline", label: "Gaming" },
-            { id: "productivity", icon: "briefcase-outline", label: "Productivité" },
-          ].map((filter) => (
-            <TouchableOpacity
-              key={filter.id}
-              style={[
-                styles.filterChip,
-                selectedFilter === filter.id && styles.filterChipActive,
-              ]}
-              onPress={() => setSelectedFilter(filter.id)}
-            >
-              <Ionicons
-                name={filter.icon as any}
-                size={18}
-                color={selectedFilter === filter.id ? "#fff" : "#64748b"}
-              />
-              <Text
+        {!reviewMode && (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            style={styles.filterSection}
+            contentContainerStyle={styles.filterRow}
+          >
+            {[
+              { id: "all", icon: "apps-outline", label: "Tous" },
+              { id: "streaming", icon: "play-circle-outline", label: "Streaming" },
+              { id: "music", icon: "musical-notes-outline", label: "Musique" },
+              { id: "gaming", icon: "game-controller-outline", label: "Gaming" },
+              { id: "productivity", icon: "briefcase-outline", label: "Productivité" },
+            ].map((filter) => (
+              <TouchableOpacity
+                key={filter.id}
                 style={[
-                  styles.filterChipText,
-                  selectedFilter === filter.id && styles.filterChipTextActive,
+                  styles.filterChip,
+                  selectedFilter === filter.id && styles.filterChipActive,
                 ]}
+                onPress={() => setSelectedFilter(filter.id)}
               >
-                {filter.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+                <Ionicons
+                  name={filter.icon as any}
+                  size={18}
+                  color={selectedFilter === filter.id ? "#fff" : "#64748b"}
+                />
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    selectedFilter === filter.id && styles.filterChipTextActive,
+                  ]}
+                >
+                  {filter.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
         {/* Section Infos & Compte à rebours (SLIDER) */}
         <View style={styles.planSliderContainer}>
@@ -401,7 +441,7 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.discoverGrid}>
-            <TouchableOpacity style={styles.discoverCard}>
+            <TouchableOpacity style={styles.discoverCard} onPress={() => router.push('/pay')}>
               <LinearGradient colors={["#dc2626", "#ef4444"]} style={styles.cardInternal}>
                 <View style={styles.cardHeader}>
                   <Ionicons name="film-outline" size={28} color="#fff" />
@@ -416,7 +456,7 @@ export default function HomeScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.discoverCard}>
+            <TouchableOpacity style={styles.discoverCard} onPress={() => router.push('/pay')}>
               <LinearGradient colors={["#7c3aed", "#a855f7"]} style={styles.cardInternal}>
                 <View style={styles.cardHeader}>
                   <Ionicons name="game-controller-outline" size={28} color="#fff" />
@@ -431,7 +471,7 @@ export default function HomeScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.discoverCard}>
+            <TouchableOpacity style={styles.discoverCard} onPress={() => router.push('/pay')}>
               <LinearGradient colors={["#059669", "#10b981"]} style={styles.cardInternal}>
                 <View style={styles.cardHeader}>
                   <Ionicons name="bag-outline" size={28} color="#fff" />
@@ -446,7 +486,7 @@ export default function HomeScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.discoverCard}>
+            <TouchableOpacity style={styles.discoverCard} onPress={() => router.push('/pay')}>
               <LinearGradient colors={["#ea580c", "#f97316"]} style={styles.cardInternal}>
                 <View style={styles.cardHeader}>
                   <Ionicons name="people-outline" size={28} color="#fff" />
@@ -467,21 +507,23 @@ export default function HomeScreen() {
         <View style={styles.subtleSeparator} />
 
         {/* Actions rapides (en dernier) */}
-        <View style={styles.actionsGrid}>
-          {[
-            { id: "accounts", icon: "people-outline", label: "Comptes" },
-            { id: "help", icon: "help-circle-outline", label: "Aide" },
-            { id: "news", icon: "film-outline", label: "Actus film" },
-            { id: "share", icon: "share-social-outline", label: "Partager" },
-          ].map((item) => (
-            <TouchableOpacity key={item.id} style={styles.actionCard}>
-              <View style={styles.actionCardIcon}>
-                <Ionicons name={item.icon as any} size={22} color="#dc2626" />
-              </View>
-              <Text style={styles.actionCardLabel}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {!reviewMode && (
+          <View style={styles.actionsGrid}>
+            {[
+              { id: "accounts", icon: "people-outline", label: "Comptes" },
+              { id: "help", icon: "help-circle-outline", label: "Aide" },
+              { id: "news", icon: "film-outline", label: "Actus film" },
+              { id: "share", icon: "share-social-outline", label: "Partager" },
+            ].map((item) => (
+              <TouchableOpacity key={item.id} style={styles.actionCard} onPress={handleComingSoon}>
+                <View style={styles.actionCardIcon}>
+                  <Ionicons name={item.icon as any} size={22} color="#dc2626" />
+                </View>
+                <Text style={styles.actionCardLabel}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -490,7 +532,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#eef0f4",
   },
   headerRow: {
     flexDirection: 'row',
@@ -546,7 +588,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    borderWidth: 2,
+    borderWidth: 0,
     borderColor: 'rgba(15,23,42,0.12)',
     overflow: 'hidden',
   },
@@ -554,9 +596,25 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  avatarFallback: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#dc2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow:'hidden'
+  },
+  avatarInitial: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
   content: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+
+        backgroundColor: 'hsla(210, 40%, 98%, 1.00)',
+    // backgroundColor: '#eef0f4',
+        backgroundColor: 'hsla(210, 40%, 97%, 1.00)',
   },
   filterSection: {
     marginTop: 8,
