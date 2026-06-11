@@ -7,6 +7,7 @@ import { useAuth } from '../../src/features/auth/context/AuthContext';
 import { Config } from '../../src/api/config';
 import { storage } from '../../src/utils/storage';
 import { usePaymentSocket } from '../../src/features/payment/hooks/usePaymentSocket';
+import { useReviewMode } from '../../src/context/ReviewModeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -46,6 +47,7 @@ const TransactionItem = ({ label, date, amount, status }: any) => {
 
 export default function TransactionsScreen() {
   const { user } = useAuth();
+  const { reviewMode, ready } = useReviewMode();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [totalSpent, setTotalSpent] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -157,13 +159,13 @@ export default function TransactionsScreen() {
         {/* Section Récentes */}
         <View style={styles.recentHeader}>
           <Text style={styles.sectionTitle}>RÉCENTES</Text>
-          <TouchableOpacity
+          {ready && !reviewMode && <TouchableOpacity
             style={styles.filterBtn}
             onPress={() => Alert.alert('Bientôt disponible', "Le filtrage sera disponible dans une prochaine mise à jour.")}
           >
             <Ionicons name="funnel-outline" size={14} color="#64748b" />
             <Text style={styles.filterBtnText}>Filtrer</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
         </View>
 
         {loading && transactions.length === 0 ? (
@@ -175,7 +177,7 @@ export default function TransactionsScreen() {
             {transactions.map((item) => (
               <TransactionItem 
                 key={item.id}
-                label={item.reason || item.planName || 'Paiement'} 
+                label={(ready && !reviewMode) ? (item.reason || item.planName || 'Paiement') : 'Suivi'}
                 status={item.status === 'success' ? 'Validé' : 'En attente'}
                 date={formatDate(item.dateCreation)} 
                 amount={item.amount} 

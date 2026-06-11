@@ -7,9 +7,11 @@ import { useAuth } from '../../src/features/auth/context/AuthContext';
 import { Config } from '../../src/api/config';
 import { storage } from '../../src/utils/storage';
 import { usePaymentSocket } from '../../src/features/payment/hooks/usePaymentSocket';
+import { useReviewMode } from '../../src/context/ReviewModeContext';
 
 export default function ActivationsScreen() {
   const { user } = useAuth();
+  const { reviewMode, ready } = useReviewMode();
   const [activations, setActivations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -149,13 +151,13 @@ export default function ActivationsScreen() {
         {/* Section Historique */}
         <View style={styles.historyHeader}>
           <Text style={styles.sectionTitle}>HISTORIQUE</Text>
-          <TouchableOpacity
+          {ready && !reviewMode && <TouchableOpacity
             style={styles.filterBtn}
             onPress={() => Alert.alert('Bientôt disponible', "Le filtrage sera disponible dans une prochaine mise à jour.")}
           >
             <Ionicons name="funnel-outline" size={14} color="#64748b" />
             <Text style={styles.filterBtnText}>Filtrer</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
         </View>
 
         {loading && activations.length === 0 ? (
@@ -181,10 +183,10 @@ export default function ActivationsScreen() {
                     />
                   </View>
                   <View style={styles.cardMainInfo}>
-                    <Text style={styles.cardPlanName}>{item.planNetflix || 'Plan Netflix'}</Text>
+                    <Text style={styles.cardPlanName}>{(ready && !reviewMode) ? (item.planNetflix || 'Plan Netflix') : 'Suivi'}</Text>
                     <View style={styles.cardEmailRow}>
                       <Ionicons name="mail-outline" size={12} color="#64748b" />
-                      <Text style={styles.cardEmailText}>{item.email || '...'}</Text>
+                      <Text style={styles.cardEmailText}>{(ready && !reviewMode) ? (item.email || '...') : (user?.email || 'Mon suivi')}</Text>
                     </View>
                   </View>
                   <View style={styles.cardValueGroup}>

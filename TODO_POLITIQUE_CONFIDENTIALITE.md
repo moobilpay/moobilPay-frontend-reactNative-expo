@@ -15,7 +15,7 @@ pas un service financier, c'est un tracker de budget personnel).
 Apple va cliquer dessus pendant la review. Si 404 → refus immédiat.
 Contenu minimum :
 - E-mail de contact : contact@moobilpay.com
-- FAQ basique (« Comment ajouter un abonnement », « Comment supprimer mon
+- FAQ basique (« Comment ajouter un suivi », « Comment supprimer mon
   compte », « Comment activer les notifications »)
 - Formulaire ou simple mailto
 
@@ -25,10 +25,11 @@ Contenu minimum :
 
 ## Périmètre réel de MoobilPay (à respecter dans la politique)
 
-L'app est un **outil de suivi et de gestion d'abonnements personnels** pour
-utilisateurs de Mobile Money. Elle **ne traite aucun paiement réel** vers les
-services tiers (Netflix, etc.). Les noms de marques sont cités uniquement à
-titre informatif pour permettre à l'utilisateur d'identifier ses abonnements.
+L'app est un **outil de suivi personnel et de gestion de budget**. L'utilisateur
+ajoute manuellement des éléments à suivre (en saisissant un nom au clavier) et
+visualise une vue d'ensemble : nom, jours restants, rappels d'échéance. L'app
+**ne traite aucun paiement**, ne vend rien, et **ne se connecte à aucun service
+tiers**. Aucune marque de service tiers n'est citée dans l'application.
 
 **Stack technique réellement utilisée par l'app mobile** :
 - Authentification : Firebase Auth (email/password, Google Sign-In, Sign in
@@ -55,14 +56,14 @@ contenu) :
 
 ```html
 <h1>Politique de confidentialité — MoobilPay</h1>
-<p><em>Dernière mise à jour : 29 mai 2026</em></p>
+<p><em>Dernière mise à jour : 11 juin 2026</em></p>
 
 <h2>1. Introduction</h2>
 <p>
-  MoobilPay est une application mobile de <strong>suivi et de gestion
-  d'abonnements personnels</strong>. La présente politique explique quelles
-  données nous collectons, comment nous les utilisons, avec qui nous les
-  partageons et quels sont vos droits.
+  MoobilPay est une application mobile de <strong>suivi personnel et de gestion
+  de budget</strong>. La présente politique explique quelles données nous
+  collectons, comment nous les utilisons, avec qui nous les partageons et quels
+  sont vos droits.
 </p>
 <p>
   En utilisant MoobilPay, vous acceptez les pratiques décrites dans cette
@@ -85,12 +86,12 @@ contenu) :
   <li><strong>Adresse e-mail</strong> — pour la création du compte et la
       communication.</li>
   <li><strong>Numéro de téléphone</strong> — utilisé pour identifier votre
-      compte et faciliter le suivi de vos abonnements.</li>
+      compte.</li>
   <li><strong>Mot de passe</strong> — uniquement si vous choisissez l'auth
       par e-mail/mot de passe ; il est chiffré côté Firebase et jamais
       visible par nous.</li>
-  <li><strong>Données d'abonnement</strong> que vous enregistrez : nom du
-      service suivi, montant, périodicité, date d'échéance.</li>
+  <li><strong>Éléments suivis</strong> que vous enregistrez : nom de
+      l'élément que vous saisissez et date d'échéance associée.</li>
 </ul>
 
 <h3>3.2 Données générées par l'utilisation</h3>
@@ -99,9 +100,8 @@ contenu) :
       automatiquement pour rattacher vos données à votre compte.</li>
   <li><strong>Jeton de notification push (FCM / APNs)</strong> — pour vous
       envoyer des rappels d'échéance.</li>
-  <li><strong>Historique de suivi des abonnements</strong> : montants, devises,
-      statut, horodatage. Ces enregistrements reflètent vos abonnements
-      personnels et servent à votre suivi budgétaire.</li>
+  <li><strong>Historique de vos suivis</strong> : noms saisis, statut,
+      horodatage. Ces enregistrements servent à votre suivi personnel.</li>
   <li><strong>Identifiants techniques</strong> : modèle d'appareil, version
       iOS / Android, version de l'application, adresse IP.</li>
 </ul>
@@ -110,8 +110,8 @@ contenu) :
 <ul>
   <li>Aucune donnée de localisation.</li>
   <li>Aucun accès aux contacts, photos, caméra, micro.</li>
-  <li>Aucun identifiant de connexion à un service tiers (Netflix, Spotify,
-      etc.) n'est demandé, transmis ou stocké.</li>
+  <li>Aucune connexion à un service tiers : l'app ne demande, ne transmet et ne
+      stocke aucun identifiant de service externe.</li>
   <li>Aucune donnée de santé.</li>
   <li>Aucun identifiant publicitaire (IDFA).</li>
 </ul>
@@ -123,12 +123,12 @@ contenu) :
       compte</td><td>Exécution du contrat</td></tr>
   <tr><td>Nom, prénom</td><td>Personnalisation de
       l'expérience</td><td>Exécution du contrat</td></tr>
-  <tr><td>Numéro de téléphone</td><td>Identification du compte, suivi
-      des abonnements</td><td>Exécution du contrat</td></tr>
+  <tr><td>Numéro de téléphone</td><td>Identification du
+      compte</td><td>Exécution du contrat</td></tr>
   <tr><td>Jeton FCM</td><td>Envoi de rappels et
       notifications</td><td>Consentement (révocable)</td></tr>
-  <tr><td>Historique d'abonnements</td><td>Suivi budgétaire
-      personnel</td><td>Exécution du contrat</td></tr>
+  <tr><td>Historique de suivis</td><td>Suivi personnel</td><td>Exécution du
+      contrat</td></tr>
   <tr><td>Données techniques (IP, modèle, OS)</td><td>Sécurité,
       diagnostic</td><td>Intérêt légitime</td></tr>
 </table>
@@ -162,11 +162,10 @@ contenu) :
       backend.</li>
 </ul>
 <p>
-  Les services d'abonnement que vous suivez (Netflix, Spotify, etc.) sont
-  mentionnés à titre informatif pour vous permettre d'identifier vos
-  propres abonnements. <strong>MoobilPay n'est affilié à aucun de ces
-  services, n'agit pas comme intermédiaire technique pour leur compte, et
-  ne stocke aucun identifiant de connexion à ces services.</strong>
+  <strong>MoobilPay ne se connecte à aucun service tiers, n'agit comme
+  intermédiaire pour aucun service, ne traite aucun paiement et ne stocke
+  aucun identifiant de connexion à un service externe.</strong> L'application
+  est un outil de suivi personnel autonome.
 </p>
 
 <h2>7. Transferts internationaux</h2>
@@ -183,7 +182,7 @@ contenu) :
   <li><strong>Compte utilisateur</strong> : conservé tant que le compte est
       actif. Supprimé dans un délai maximum de <strong>30 jours</strong>
       après votre demande.</li>
-  <li><strong>Historique de suivi des abonnements</strong> : conservé tant que
+  <li><strong>Historique de vos suivis</strong> : conservé tant que
       le compte est actif ; supprimé avec le compte.</li>
   <li><strong>Logs techniques</strong> : <strong>90 jours</strong>
       maximum.</li>
@@ -249,23 +248,14 @@ contenu) :
   contact@moobilpay.com pour suppression.
 </p>
 
-<h2>13. Marques tierces</h2>
-<p>
-  Les noms et marques des services tiers cités dans l'application (Netflix,
-  Spotify, etc.) sont la propriété de leurs détenteurs respectifs. Ils sont
-  utilisés à titre purement descriptif pour permettre aux utilisateurs
-  d'identifier leurs propres abonnements. MoobilPay n'a aucun partenariat,
-  affiliation ou lien commercial avec ces services.
-</p>
-
-<h2>14. Modifications</h2>
+<h2>13. Modifications</h2>
 <p>
   Cette politique peut évoluer. La date de dernière mise à jour est indiquée
   en haut. En cas de changement substantiel, nous vous en informerons via
   l'application ou par e-mail.
 </p>
 
-<h2>15. Nous contacter</h2>
+<h2>14. Nous contacter</h2>
 <ul>
   <li>E-mail : <strong>contact@moobilpay.com</strong></li>
   <li>Éditeur : MoobilPay</li>
@@ -288,9 +278,9 @@ dans la politique ci-dessus :
 - [x] **Device ID (FCM token)** → section 3.2 « Jeton de notification push
       (FCM / APNs) »
 
-⚠️ **Other Financial Info** : RETIRÉ d'App Privacy. L'app ne collecte pas
-d'info financière au sens d'Apple (pas de carte/compte bancaire). Les montants
-d'abonnement sont de simples données de suivi budgétaire.
+⚠️ **Other Financial Info** : RETIRÉ d'App Privacy. L'app ne collecte aucune
+info financière (pas de carte/compte bancaire, pas de montant). Les éléments
+suivis sont de simples noms saisis par l'utilisateur pour son suivi personnel.
 
 ✅ Tout est couvert.
 
@@ -307,7 +297,7 @@ d'abonnement sont de simples données de suivi budgétaire.
 - [x] Contact (email)
 - [x] Date de dernière mise à jour
 - [x] Mention des mineurs
-- [x] Clarification du positionnement (pas d'intermédiation Netflix)
+- [x] Clarification du positionnement (tracker personnel, aucun service tiers)
 
 ---
 

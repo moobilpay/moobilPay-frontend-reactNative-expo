@@ -4,11 +4,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useReviewMode } from '../../src/context/ReviewModeContext';
 
 export default function TabLayout() {
   const primaryColor = '#ef4444';
   const inactiveColor = '#64748b';
   const insets = useSafeAreaInsets();
+  const { reviewMode, ready } = useReviewMode();
+  // Tant que le mode review n'est pas connu, on masque les onglets sensibles
+  // (anti-flash : évite d'afficher 5 onglets puis de retomber à 3).
+  const hideSensitiveTabs = !ready || reviewMode;
 
   return (
     <Tabs
@@ -50,6 +55,9 @@ export default function TabLayout() {
         name="transactions"
         options={{
           title: 'Transactions',
+          // Mode review Apple : onglet masqué (href: null) pour ne pas exposer
+          // l'historique de paiements (Guideline 3.1.1).
+          href: hideSensitiveTabs ? null : undefined,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'card' : 'card-outline'} size={24} color={color} />
           ),
@@ -59,6 +67,8 @@ export default function TabLayout() {
         name="activations"
         options={{
           title: 'Activations',
+          // Mode review Apple : onglet masqué (href: null).
+          href: hideSensitiveTabs ? null : undefined,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'list' : 'list-outline'} size={24} color={color} />
           ),

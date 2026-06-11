@@ -7,6 +7,7 @@ import {
   Dimensions,
   Animated,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,7 +25,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [fadeAnim] = useState(new Animated.Value(1));
   const insets = useSafeAreaInsets();
-  const { reviewMode } = useReviewMode();
+  const { reviewMode, ready } = useReviewMode();
   const totalSteps = 3;
 
   const animateTransition = () => {
@@ -153,6 +154,21 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
     );
   };
 
+  // Anti-flash : tant que le mode review n'est pas connu (API pas répondue),
+  // on affiche un écran de chargement neutre sur le même fond. Évite d'afficher
+  // brièvement le contenu "Netflix" avant de basculer en review.
+  if (!ready) {
+    return (
+      <View style={[styles.onboardingContent, { alignItems: 'center', justifyContent: 'center' }]}>
+        <LinearGradient
+          colors={["#0f0f23", "#1a1a2e", "#16213e"]}
+          style={styles.gradient}
+        />
+        <ActivityIndicator size="large" color="#dc2626" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.onboardingContent}>
       <LinearGradient
@@ -198,7 +214,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
                 </Text>
                 <Text style={styles.stepSubtitle}>
                   {currentStep === 1
-                    ? (reviewMode ? "Gérez vos abonnements" : "Votre passerelle vers Netflix")
+                    ? (reviewMode ? "Gardez vos suivis" : "Votre passerelle vers Netflix")
                     : currentStep === 2
                       ? (reviewMode ? "Une vue claire de votre budget" : "MTN & Orange Money")
                       : (reviewMode ? "Ne ratez plus une échéance" : "Netflix prêt en 2 minutes")}
@@ -206,7 +222,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
                 <Text style={styles.stepDescription}>
                   {currentStep === 1
                     ? (reviewMode
-                        ? "Suivez et organisez tous vos abonnements personnels en un seul endroit, simplement."
+                        ? "Suivez et organisez tous vos suivis personnels en un seul endroit, simplement."
                         : "Accédez instantanément à des milliers de films et séries. Payez votre abonnement Netflix en quelques clics avec MTN ou Orange Money.")
                     : currentStep === 2
                       ? (reviewMode

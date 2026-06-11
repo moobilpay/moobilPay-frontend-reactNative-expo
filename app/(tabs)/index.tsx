@@ -23,6 +23,8 @@ import { storage } from "../../src/utils/storage";
 import { PageHeader } from "../../src/components/PageHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useReviewMode } from "../../src/context/ReviewModeContext";
+import SubscriptionCard from "../../src/components/SubscriptionCard";
+import AddSubscriptionSheet from "../../src/components/AddSubscriptionSheet";
 
 const { width } = Dimensions.get("window");
 
@@ -32,7 +34,9 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = insets.top + 92; // safe area + hauteur contenu (searchbar ~56 + paddings) + marge
   const [selectedFilter, setSelectedFilter] = useState("all");
-  const { reviewMode } = useReviewMode();
+  const { reviewMode, ready } = useReviewMode();
+  // Bottom sheet d'ajout d'abonnement (mode review uniquement).
+  const [addSheetVisible, setAddSheetVisible] = useState(false);
 
   // Entrées pas encore implémentées : feedback clair au clic (Apple Guideline 2.1).
   const handleComingSoon = () => {
@@ -150,7 +154,7 @@ export default function HomeScreen() {
 
   // ── Calculs dynamiques pour un plan donné ──
   const getPlanStats = (plan: any) => {
-    if (!plan) return { price: "0.00", daysLeft: 0, progress: 0, planName: "Plan", email: "" };
+    if (!plan) return { price: "0.00", daysLeft: 0, progress: 0, planName: "Abonnement", email: "" };
 
     const now = new Date();
     const expiry = new Date(plan.dateExpiration);
@@ -168,19 +172,147 @@ export default function HomeScreen() {
       price: plan.amount?.toString() || "0.00",
       daysLeft,
       progress: 100 - progress,
-      planName: `Netflix ${plan.planNetflix || "Plan"}`,
-      email: plan.email || "Chargement..."
+      planName: reviewMode ? "Suivi" : `Netflix ${plan.planNetflix || "Plan"}`,
+      email: reviewMode ? (user?.email || "Mon suivi") : (plan.email || "Chargement...")
     };
   };
 
   const currentStats = getPlanStats(bestPlan);
+
+  // ─── Groupement par échéance (mode review) ────────────────────────────────
+  // Répartit les abonnements en 3 sections selon leur date de renouvellement.
+  const groupByDueDate = (list: any[]) => {
+    const now = new Date();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59);
+
+    const groups: { title: string; items: any[] }[] = [
+      { title: 'Ce mois-ci', items: [] },
+      { title: 'Mois prochain', items: [] },
+      { title: 'Plus tard', items: [] },
+    ];
+
+    list.forEach((item) => {
+      const expiry = new Date(item.dateExpiration);
+      if (expiry <= endOfMonth) groups[0].items.push(item);
+      else if (expiry <= endOfNextMonth) groups[1].items.push(item);
+      else groups[2].items.push(item);
+    });
+
+    return groups.filter((g) => g.items.length > 0);
+  };
+
+  // ─── RENDU MODE REVIEW APPLE ──────────────────────────────────────────────
+  // App transformée en pur tracker d'abonnements : aucune mention de service
+  // tiers, aucun prix, aucun flux de paiement. L'utilisateur ajoute ses
+  // abonnements manuellement via le bouton "+".
+
+  // Anti-flash : tant que le mode review n'est pas connu, on affiche un loader
+  // neutre au lieu du contenu (évite d'afficher brièvement le mode Netflix).
+  if (!ready) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color="#dc2626" />
+      </View>
+    );
+  }
+
+  if (ready && reviewMode) {
+    const grouped = groupByDueDate(activations);
+    return (
+      <View style={styles.container}>
+        <PageHeader variant="blur">
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Image
+                source={require("../../assets/logoblanc.png")}
+                style={{ width: 36, height: 36, tintColor: '#dc2626' }}
+                resizeMode="contain"
+              />
+              <Text style={{ fontSize: 22, fontWeight: '800', color: '#dc2626', letterSpacing: -0.5 }}>
+                Moobil<Text style={{ color: '#0f172a' }}>Pay</Text>
+              </Text>
+            </View>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.actionIcon}
+                onPress={() => router.push('/notifications')}
+              >
+                <Ionicons name="notifications-outline" size={22} color="#0f172a" />
+                <View style={styles.badge} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.avatarContainer}
+                onPress={() => router.push('/settings')}
+              >
+                {user?.photoURL ? (
+                  <Image source={{ uri: user.photoURL }} style={styles.avatar} />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Text style={styles.avatarInitial}>
+                      {(user?.email?.charAt(0) || 'U').toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </PageHeader>
+
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingTop: headerHeight, paddingBottom: 120 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => fetchActivations(true)} />
+          }
+        >
+          {/* Bouton + Ajouter (juste sous le header) */}
+          <TouchableOpacity
+            style={styles.addSubBtn}
+            activeOpacity={0.85}
+            onPress={() => setAddSheetVisible(true)}
+          >
+            <Ionicons name="add" size={22} color="#fff" />
+            <Text style={styles.addSubBtnText}>Ajouter un suivi</Text>
+          </TouchableOpacity>
+
+          {/* Liste empilée, groupée par échéance */}
+          {grouped.length > 0 ? (
+            grouped.map((group) => (
+              <View key={group.title} style={styles.reviewSection}>
+                <Text style={styles.reviewSectionTitle}>{group.title}</Text>
+                {group.items.map((act) => (
+                  <SubscriptionCard key={act.id} plan={act} />
+                ))}
+              </View>
+            ))
+          ) : (
+            <View style={styles.reviewEmpty}>
+              <Ionicons name="reader-outline" size={56} color="#e2e8f0" />
+              <Text style={styles.reviewEmptyTitle}>Aucun suivi pour le moment</Text>
+              <Text style={styles.reviewEmptyText}>
+                Appuyez sur « Ajouter un suivi » pour commencer.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+
+        <AddSubscriptionSheet
+          visible={addSheetVisible}
+          onClose={() => setAddSheetVisible(false)}
+          onAdded={() => fetchActivations(true)}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <PageHeader variant="blur">
         <View style={styles.headerRow}>
           {/* Barre de recherche ou Logo */}
-          {!reviewMode ? (
+          {ready && !reviewMode ? (
             <TouchableOpacity
               style={styles.searchBar}
               activeOpacity={0.7}
@@ -247,7 +379,7 @@ export default function HomeScreen() {
         }
       >
         {/* Chips de filtrage */}
-        {!reviewMode && (
+        {ready && !reviewMode && (
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false} 
@@ -287,7 +419,10 @@ export default function HomeScreen() {
           </ScrollView>
         )}
 
-        {/* Section Infos & Compte à rebours (SLIDER) */}
+        {/* Section Infos & Compte à rebours (SLIDER) — masquée tant que le mode
+            review n'est pas connu (anti-flash) et en review (remplacée par la
+            liste empilée SubscriptionCard via l'early-return). */}
+        {ready && !reviewMode && (
         <View style={styles.planSliderContainer}>
           <ScrollView
             horizontal
@@ -342,25 +477,29 @@ export default function HomeScreen() {
                       <Text style={styles.planDuration}>1 mois</Text>
                     </View>
 
-                    <View style={styles.buttonRow}>
-                      <TouchableOpacity style={styles.resubscribeBtn} onPress={() => router.push('/pay')}>
-                        <Ionicons name="flash-sharp" size={16} color="#fff" />
-                        <Text style={styles.btnText}>Réabonner</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.unsubscribeBtn} onPress={() => router.push('/pay')}>
-                        <Ionicons name="add-circle-outline" size={18} color="#ef4444" />
-                        <Text style={styles.btnTextOutline}>Ajouter</Text>
-                      </TouchableOpacity>
-                    </View>
+                    {ready && !reviewMode && (
+                      <View style={styles.buttonRow}>
+                        <TouchableOpacity style={styles.resubscribeBtn} onPress={() => router.push('/pay')}>
+                          <Ionicons name="flash-sharp" size={16} color="#fff" />
+                          <Text style={styles.btnText}>Réabonner</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.unsubscribeBtn} onPress={() => router.push('/pay')}>
+                          <Ionicons name="add-circle-outline" size={18} color="#ef4444" />
+                          <Text style={styles.btnTextOutline}>Ajouter</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 );
               })
             ) : (
               <View style={[styles.statsCard, { opacity: 0.6 }]}>
                 <Text style={styles.noPlanMessage}>Aucun plan actif pour le moment</Text>
-                <TouchableOpacity style={styles.resubscribeBtn} onPress={() => router.push('/pay')}>
-                  <Text style={styles.btnText}>Découvrir les plans</Text>
-                </TouchableOpacity>
+                {ready && !reviewMode && (
+                  <TouchableOpacity style={styles.resubscribeBtn} onPress={() => router.push('/pay')}>
+                    <Text style={styles.btnText}>Découvrir les plans</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </ScrollView>
@@ -373,7 +512,12 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+        )}
 
+        {/* Sections Services & Découvrir : visibles uniquement hors review et
+            une fois le mode review connu (anti-flash). */}
+        {ready && !reviewMode && (
+        <>
         {/* Séparateur */}
         <View style={styles.subtleSeparator} />
 
@@ -502,12 +646,14 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </>
+        )}
 
         {/* Séparateur */}
         <View style={styles.subtleSeparator} />
 
         {/* Actions rapides (en dernier) */}
-        {!reviewMode && (
+        {ready && !reviewMode && (
           <View style={styles.actionsGrid}>
             {[
               { id: "accounts", icon: "people-outline", label: "Comptes" },
@@ -533,6 +679,59 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#eef0f4",
+  },
+  // ── Mode review : bouton + et liste empilée ──
+  addSubBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#dc2626',
+    marginHorizontal: 20,
+    height: 52,
+    borderRadius: 16,
+    marginBottom: 24,
+    shadowColor: '#dc2626',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  addSubBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  reviewSection: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  reviewSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  reviewEmpty: {
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingTop: 60,
+  },
+  reviewEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#475569',
+    marginTop: 16,
+  },
+  reviewEmptyText: {
+    fontSize: 13,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 19,
   },
   headerRow: {
     flexDirection: 'row',

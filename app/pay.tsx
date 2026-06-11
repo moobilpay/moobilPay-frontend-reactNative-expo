@@ -174,6 +174,17 @@ export default function ReabonnementScreen() {
     }
   }, [userData, user]);
 
+  // ─── Garde mode review Apple ──────────────────────────────────────────────
+  // En mode review, l'écran de paiement (catalogue de plans Netflix avec prix)
+  // ne doit JAMAIS être visible — Apple le considère comme un accès à du
+  // contenu digital payant (Guideline 3.1.1). Dès qu'on sait qu'on est en
+  // review, on renvoie immédiatement l'utilisateur vers l'accueil.
+  useEffect(() => {
+    if (appleReviewMode) {
+      router.replace('/(tabs)/');
+    }
+  }, [appleReviewMode]);
+
   // ON NE GÈRE PLUS LE SOCKET ICI, C'EST DÉPORTÉ DANS LE HOOK CI-DESSOUS
 
 
@@ -673,6 +684,20 @@ export default function ReabonnementScreen() {
 
   // ─── Corps selon page/étape ────────────────────────────────────────────────
   const renderBody = () => {
+    // En mode review, on n'affiche jamais le catalogue de plans : on garde le
+    // loader le temps que la redirection vers l'accueil s'effectue (anti-flash).
+    if (appleReviewMode) {
+      return (
+        <StepPlanSelection
+          plans={[]}
+          selectedPlanId={selectedPlanId}
+          loading={true}
+          submitting={false}
+          onSelectPlan={setSelectedPlanId}
+          onContinue={handlePlanContinue}
+        />
+      );
+    }
     if (currentPage === 1) {
       return (
         <StepPlanSelection

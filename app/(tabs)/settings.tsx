@@ -76,7 +76,7 @@ const SettingItem: React.FC<SettingItemProps> = ({
 export default function SettingsScreen() {
   const { logout, deleteAccount } = useAuth();
   const router = useRouter();
-  const { reviewMode } = useReviewMode();
+  const { reviewMode, ready } = useReviewMode();
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
@@ -219,8 +219,8 @@ export default function SettingsScreen() {
               Cette action est <Text style={{ fontWeight: '700' }}>définitive et irréversible</Text>.{'\n\n'}
               Toutes vos données seront supprimées :{'\n'}
               • Votre profil et identifiants{'\n'}
-              • Vos abonnements suivis{'\n'}
-              • Votre historique de paiements{'\n'}
+              • Vos suivis{'\n'}
+              {ready && !reviewMode && <>• Votre historique de paiements{'\n'}</>}
               • Vos notifications{'\n\n'}
               Pour confirmer, tapez{' '}
               <Text style={{ fontWeight: '700', color: '#ef4444' }}>{REQUIRED_CONFIRM}</Text>{' '}
@@ -284,7 +284,7 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {!reviewMode && (
+        {ready && !reviewMode && (
           <>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>GÉNÉRAL</Text>
@@ -360,6 +360,7 @@ export default function SettingsScreen() {
                   type="arrow"
                   onPress={handleComingSoon}
                 />
+                {/* Abonnement — désactivé pour Apple Review (bouton "bientôt disponible" non conforme Guideline 2.1)
                 <View style={styles.separator} />
                 <SettingItem
                   icon="card-outline"
@@ -370,6 +371,7 @@ export default function SettingsScreen() {
                   rightText="Premium"
                   onPress={handleComingSoon}
                 />
+                */}
               </View>
             </View>
           </>

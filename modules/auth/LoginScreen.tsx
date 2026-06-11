@@ -31,6 +31,9 @@ const LoginScreen: React.FC = () => {
   const router = useRouter();
   const { setUserData } = useAuth();
   const { reviewMode, ready } = useReviewMode();
+  // On n'affiche le contenu "Netflix" QUE si le mode review est connu (ready)
+  // ET qu'on n'est pas en review. Sinon → contenu neutre (anti-flash).
+  const showNetflix = ready && !reviewMode;
 
   const heroBounce = useRef(new Animated.Value(-20)).current;
   const heroOpacity = useRef(new Animated.Value(0)).current;
@@ -146,23 +149,23 @@ const LoginScreen: React.FC = () => {
           </View>
 
           <View style={styles.heroTitle}>
-            <Text style={styles.heroLine1}>{reviewMode ? "Suivez vos" : "Payez votre"}</Text>
+            <Text style={styles.heroLine1}>{!showNetflix ? "Gardez vos" : "Payez votre"}</Text>
             <View style={styles.heroAccentRow}>
-              <Text style={styles.heroLine2}>{reviewMode ? "abonnements" : "Netflix"}</Text>
+              <Text style={styles.heroLine2}>{!showNetflix ? "suivis" : "Netflix"}</Text>
               <View style={styles.heroRedUnderline} />
             </View>
-            <Text style={styles.heroLine3}>{reviewMode ? "en un seul endroit." : "depuis l'Afrique."}</Text>
+            <Text style={styles.heroLine3}>{!showNetflix ? "en un seul endroit." : "depuis l'Afrique."}</Text>
           </View>
 
           <View style={styles.partnerBadges}>
             <View style={styles.badge}>
               <View style={[styles.badgeDot, { backgroundColor: "#ffcc00" }]} />
-              <Text style={styles.badgeLabel}>{reviewMode ? "Rappels" : "MTN Money"}</Text>
+              <Text style={styles.badgeLabel}>{!showNetflix ? "Rappels" : "MTN Money"}</Text>
             </View>
             <View style={styles.badgeSep} />
             <View style={styles.badge}>
               <View style={[styles.badgeDot, { backgroundColor: "#ff6600" }]} />
-              <Text style={styles.badgeLabel}>{reviewMode ? "Budget" : "Orange Money"}</Text>
+              <Text style={styles.badgeLabel}>{!showNetflix ? "Budget" : "Orange Money"}</Text>
             </View>
           </View>
         </Animated.View>
