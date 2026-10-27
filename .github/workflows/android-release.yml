@@ -19,6 +19,11 @@ on:
         type: choice
         options: [production, beta, alpha, internal]
         default: production
+      status:
+        description: "Statut de la release (draft obligatoire tant que l'app n'a jamais ete publiee sur Play)"
+        type: choice
+        options: [completed, draft]
+        default: completed
       release_notes:
         description: "Notes de version Play Store (« Nouveautés », 500 car. max, \\n = retour à la ligne). Vide = aucune note"
         type: string
@@ -90,5 +95,5 @@ jobs:
           packageName: com.moobilpay.com
           releaseFiles: app.aab
           track: ${{ inputs.track }}
-          status: completed
+          status: ${{ inputs.status }}
           whatsNewDirectory: ${{ inputs.release_notes != '' && 'whatsnew' || '' }}
