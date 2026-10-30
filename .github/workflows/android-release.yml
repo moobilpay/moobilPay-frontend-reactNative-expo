@@ -32,6 +32,10 @@ on:
         description: Langue des notes (doit exister dans la fiche Play Store)
         type: string
         default: fr-FR
+      send_for_review:
+        description: "Envoyer pour examen a Google (decoche = a envoyer manuellement depuis Play Console ; refuse par Play apres un rejet)"
+        type: boolean
+        default: false
 
 jobs:
   release:
@@ -97,6 +101,5 @@ jobs:
           track: ${{ inputs.track }}
           status: ${{ inputs.status }}
           whatsNewDirectory: ${{ inputs.release_notes != '' && 'whatsnew' || '' }}
-          # Obligatoire apres un rejet Play : l'envoi en examen se fait ensuite
-          # manuellement depuis Play Console > Apercu de la publication.
-          changesNotSentForReview: true
+          # Decoche : envoi en examen manuel depuis Play Console > Apercu de la publication.
+          changesNotSentForReview: ${{ !inputs.send_for_review }}
