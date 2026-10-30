@@ -28,11 +28,21 @@ export async function handleEmailAuth(email: string, password: string): Promise<
             // 1. Tenter la connexion
             userCredential = await signInWithEmailAndPassword(auth, email, password);
         } catch (signInError: any) {
-            // 2. Si l'utilisateur n'existe pas, on tente de le créer (Auto-Signup)
-            if (signInError.code === 'auth/user-not-found') {
-                console.log("🔵 [EmailAuth] Utilisateur non trouvé, tentative de création...");
-                userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                isNewUser = true;
+            // 2. Si l'utilisateur n'existe pas, on tente de le créer (Auto-Signup).
+            // Avec la protection contre l'énumération d'emails, Firebase renvoie
+            // 'auth/invalid-credential' au lieu de 'auth/user-not-found'.
+            if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
+                console.log("🔵 [EmailAuth] Connexion refusée, tentative de création...");
+                try {
+                    userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    isNewUser = true;
+                } catch (createError: any) {
+                    // Le compte existe déjà → c'est donc le mot de passe qui est faux
+                    if (createError.code === 'auth/email-already-in-use') {
+                        throw { code: 'auth/wrong-password' };
+                    }
+                    throw createError;
+                }
             } else {
                 throw signInError;
             }
@@ -95,6 +105,15 @@ export async function handleEmailAuth(email: string, password: string): Promise<
                 break;
             case 'auth/weak-password':
                 errorMessage = "Le mot de passe doit contenir au moins 6 caractères.";
+                break;
+            case 'auth/too-many-requests':
+                errorMessage = "Trop de tentatives. Réessayez dans quelques minutes.";
+                break;
+            case 'auth/network-request-failed':
+                errorMessage = "Erreur réseau. Vérifiez votre connexion.";
+                break;
+            case 'auth/operation-not-allowed':
+                errorMessage = "La connexion par e-mail n'est pas activée.";
                 break;
         }
 
