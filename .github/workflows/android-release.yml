@@ -97,3 +97,6 @@ jobs:
           track: ${{ inputs.track }}
           status: ${{ inputs.status }}
           whatsNewDirectory: ${{ inputs.release_notes != '' && 'whatsnew' || '' }}
+          # Obligatoire apres un rejet Play : l'envoi en examen se fait ensuite
+          # manuellement depuis Play Console > Apercu de la publication.
+          changesNotSentForReview: true
