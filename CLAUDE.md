@@ -59,3 +59,11 @@ Fichier versionné : ses règles valent sur tout PC et dans toute session Claude
 ## R10 - Emojis
 
 - Aucun emoji décoratif : ni dans le code, ni dans l'interface, ni dans les commits.
+
+## R11 - Hooks
+
+- `.claude/hooks/` (déclarés dans `.claude/settings.json`), repris du modèle yaammoo :
+  - `session-start-read.sh` : injecte ce fichier au premier message de la session.
+  - `no-secret-commit.sh` : refuse un commit qui contient `.env*` ou une clé.
+  - `enforce-file-size.sh` : fichier de code > 500 lignes = proposer un découpage (avec accord).
+- Un hook qui bloque applique la règle : ne pas le contourner.
